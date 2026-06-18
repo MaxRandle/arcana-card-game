@@ -4,10 +4,10 @@
 
 - Mana: 1
 - Target: Enemy
-- Effect: Afflicts an enemy with 1 stack of burn
+- Effect: Inflicts 1 stack of burn
 
-## Vital conversion
+## Accelerant
 
 - Mana: 0
 - Target: N/A
-- Effect: lose 1 hp and gain 1 mana immediately
+- Effect: Lose 1 hp, gain 1 mana

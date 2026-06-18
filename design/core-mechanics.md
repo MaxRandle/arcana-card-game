@@ -10,7 +10,7 @@ Arcana is a rogue-like turn-based card-based combat game where the player contro
 
 There are 5 "first-order" Arcana, or "primary" arcana:
 
-- Wind
+- Air
 - Water
 - Earth
 - Fire
@@ -18,10 +18,10 @@ There are 5 "first-order" Arcana, or "primary" arcana:
 
 There are also 10 "second-order" or "derived" arcana which thematically are combinations of the primary arcana:
 
-- Ice - Wind + Water
-- Sand - Wind + Earth
-- Blaze - Wind + Fire
-- Plasma - Wind + Lightning
+- Ice - Air + Water
+- Sand - Air + Earth
+- Blaze - Air + Fire
+- Plasma - Air + Lightning
 - Mud - Water + Earth
 - Vapour - Water + Fire
 - Storm - Water + Lightning
