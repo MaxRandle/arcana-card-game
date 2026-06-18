@@ -100,8 +100,8 @@ The Play phase ends when the user clicks the "End turn" button.
 
 Enemy turn:
 
-1. Enemy performs a unique action
-2. Enemy character(s) attack
+1. Enemy action phase - Enemy performs a unique action
+2. Enemy attack phase - Enemy unit(s) attack
 
 ### Enemy actions
 
@@ -117,4 +117,4 @@ The players hand is in the bottom center of the screen with the cards fanned out
 
 ### Card appearance
 
-Cards have a title at the top, a mana const indicator at the top left, a portrait area for the cards splash art taking up about 1 3rd of the card's height, and a body text region taking up the lower majority of the card which describes the card's effect.
+Cards have portrait rectangular shape with a title at the top, a mana const indicator at the top left, a portrait area for the cards splash art taking up about 1 3rd of the card's height, and a body text region taking up the lower majority of the card which describes the card's effect.
