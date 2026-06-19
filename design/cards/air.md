@@ -10,7 +10,7 @@
 
 - Mana: 3
 - Target: Player
-- Effect: For the rest of combat, 25% chance to evade attacks
+- Effect: Gain the Twinkletoes buff
 
 ## Tenacity
 

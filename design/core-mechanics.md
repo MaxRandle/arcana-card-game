@@ -16,19 +16,6 @@ There are 5 "first-order" Arcana, or "primary" arcana:
 - Fire
 - Lightning
 
-There are also 10 "second-order" or "derived" arcana which thematically are combinations of the primary arcana:
-
-- Ice - Air + Water
-- Sand - Air + Earth
-- Blaze - Air + Fire
-- Plasma - Air + Lightning
-- Mud - Water + Earth
-- Vapour - Water + Fire
-- Storm - Water + Lightning
-- Lava - Fire + Earth
-- Metal - Lightning + Earth
-- Chaos - Fire + Lightning
-
 Each arcana unlocks a unique pool of cards.
 
 ## Deck building
