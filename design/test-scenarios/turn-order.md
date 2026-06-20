@@ -27,18 +27,12 @@
 
 ### Enemies perform their action(s) at the start of their turn
 
-**GIVEN** The "attack phase" is ending
-**THEN** The turn order advances to the "Enemy action phase"
-**AND** The enemies perform their actions
+**GIVEN** The turn order is on the "enemy action phase"
+**THEN** Enemies perform their unique action
+**AND** The turn order advances to the "enemy attack phase"
 
 ### Enemies attack the player at the end of their turn
 
-**GIVEN** It is an enemy's turn
-**WHEN** The enemy's turn ends
+**GIVEN** The turn order is on the "enemy attack phase"
 **THEN** The enemy performs an attack against the player's character
-
-### The player's turn begins after the enemies turn has ended
-
-**GIVEN** The enemy's turn has just ended
-**WHEN** The turn order advances
-**THEN** The player's turn phase begins
+**AND** The turn order advances to the "play phase"

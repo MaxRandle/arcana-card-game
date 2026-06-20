@@ -4,16 +4,22 @@
 
 - Mana: 1
 - Target: Enemy
-- Effect: Deals 3 damage
+- Effect: Deals 3 damage;
 
 ## Endurance
 
-- Mana: 4
+- Mana: 2
 - Target: Player
-- Effect: Gain 2 block
+- Effect: Ramp 1; Gain 1 block;
 
 ## Tremors
 
 - Mana: 2
 - Target: Player
-- Effect: Until the start of your next turn, whenever you are attacked you deal 2 damage to all enemies.
+- Effect: Fleeting; Whenever you are attacked, deal 2 damage to all enemies;
+
+## Physical energy
+
+- Mana: 2
+- Target: N/A
+- Effect: Gain 1 attack;

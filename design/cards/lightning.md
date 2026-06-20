@@ -4,16 +4,16 @@
 
 - Mana: 1
 - Target: Enemy
-- Effect: Deal 3 damage, apply 1 stack of static
-
-## Mental energy
-
-- Mana: 0
-- Target: N/A
-- Effect: Draw 2 cards
+- Effect: Deal 3 damage; Apply 1 static;
 
 ## Humble guide
 
 - Mana: 2
 - Target: Enemy
-- Effect: Deal 1 damage for each stack of static on the target
+- Effect: Deal 1 damage for each static on the target;
+
+## Mental energy
+
+- Mana: 1
+- Target: N/A
+- Effect: Draw 2 cards;

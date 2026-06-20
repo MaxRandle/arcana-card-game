@@ -17,3 +17,9 @@
 - Mana: 1
 - Target: Player
 - Effect: Remove all debuffs
+
+## Spirit Energy
+
+- Mana: 1
+- Target: Player
+- Effect: TDB
