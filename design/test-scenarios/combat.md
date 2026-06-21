@@ -2,7 +2,7 @@
 
 ### At the start of combat the player is offered an opening draft
 
-**GIVEN** A combat encounter is beginning
+**GIVEN** The player enters an encounter
 **THEN** The player is presented with a selection of 5 cards from their deck
 **AND** The player can choose 3 cards
 **AND** The selected cards are added to the hand

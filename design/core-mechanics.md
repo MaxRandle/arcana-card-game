@@ -93,15 +93,3 @@ Enemy turn:
 ### Enemy actions
 
 Enemies can perform unique actions on their turn. They might cast a spell, they might change their stats, they might summon allies, they might change the player's stats, etc... these actions are typically unique to each type of enemy.
-
-## Game Interface
-
-### Combat screen
-
-A background image is visible, the players character sprite is on the left facing right, the enemy sprites are on the right facing left.
-
-The players hand is in the bottom center of the screen with the cards fanned out and slightly overlapping like how a person would hold multiple cards. This is very similar to the layout of existing games such as "Hearthstone" and "Slay the Spire 2".
-
-### Card appearance
-
-Cards have portrait rectangular shape with a title at the top, a mana const indicator at the top left, a portrait area for the cards splash art taking up about 1 3rd of the card's height, and a body text region taking up the lower majority of the card which describes the card's effect.
