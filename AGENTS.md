@@ -53,4 +53,4 @@ The workflow outline is as follows:
 1. The user will make changes to files in the `design` folder
 2. You will examine the git diff to gain an understanding of new or changing requirements
 3. The user will commence an alignment session with the `/grill-with-docs` skill
-4. The user may update the design files to reflect the
+4. The user will invoke the `/to-prd` skill create a "Product Requirement Document".
