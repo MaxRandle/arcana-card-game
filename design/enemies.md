@@ -6,42 +6,54 @@
 
 - HP: 60
 - Atk: 1
-- Blk: 3
+- Blk: 2
 
-### Abilities
+### Actions
 
-- Battle stance: Lose 2 block, gain 2 attack
-- Defensive stance: Gain 2 block, lose 2 attack
+- Battle stance: Lose 3 block, gain 3 attack
+- Defensive stance: Gain 3 block, lose 3 attack
 
-Ability cycle:
+Action cycle:
 
 1. Battle stance
 2. Defensive stance
 3. Battle stance
 4. Defensive stance
 
-### Starting buffs/debuffs
-
-None
-
 ## Slow knight
 
 - HP: 60
 - Atk: 1
-- Blk: 3
+- Blk: 2
 
-### Abilities
+### Actions
 
-- Battle stance: Lose 2 block, gain 2 attack
-- Defensive stance: Gain 2 block, lose 2 attack
+- Battle stance: Lose 3 block, gain 3 attack
+- Defensive stance: Gain 3 block, lose 3 attack
 
-Ability cycle:
+Action cycle:
 
 1. Battle stance
 2. None
 3. Defensive stance
 4. None
 
-### Starting buffs/debuffs
+## Barbarian
 
-None
+### Stats
+
+- HP: 60
+- Atk: 1
+- Blk: 0
+
+### Actions
+
+- Blood rage: Deal 1 damage to self every turn.
+
+Action cycle:
+
+1. Blood rage
+
+### Passive abilities
+
+- Barbarian's rage: Gains 1 attack each time it takes damage.

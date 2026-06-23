@@ -1,6 +1,6 @@
 # Card keywords
 
-Describes notation, nomenclature, terminology, etc.
+Dictionary definitions for card effect keywords & terminology.
 
 ---
 

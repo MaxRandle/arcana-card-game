@@ -22,4 +22,4 @@
 
 - Mana: 1
 - Target: Player
-- Effect: TDB
+- Effect: Increases elemental damage you deal by 1
