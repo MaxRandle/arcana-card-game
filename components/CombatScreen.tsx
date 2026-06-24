@@ -96,7 +96,7 @@ export function CombatScreen({
     : false;
 
   return (
-    <main className="relative flex min-h-full flex-1 flex-col p-6">
+    <main className="relative flex min-h-full flex-1 flex-col overflow-hidden p-6">
       <ScreenBackground />
 
       <button
