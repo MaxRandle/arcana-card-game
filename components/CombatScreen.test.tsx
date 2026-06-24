@@ -40,6 +40,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     expect(screen.getByLabelText("Arcanist stats")).toHaveTextContent(
@@ -55,6 +56,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
@@ -69,6 +71,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={onWin}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
@@ -83,6 +86,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={onLoss}
+        onRetire={() => {}}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
@@ -101,6 +105,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     expect(screen.getByLabelText(/mana/i)).toHaveTextContent("3");
@@ -118,6 +123,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     const hand = screen.getByLabelText("Hand");
@@ -137,6 +143,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     const cardEl = screen.getByLabelText(/play windshear/i);
@@ -163,6 +170,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     const cardEl = screen.getByLabelText(/play windshear/i);
@@ -174,6 +182,22 @@ describe("CombatScreen", () => {
     expect(screen.getByLabelText("Hand")).toHaveTextContent("Windshear");
   });
 
+  it("retires the run from the menu", async () => {
+    const onRetire = jest.fn();
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist(), [enemy()])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={onRetire}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /menu/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /retire/i }));
+    expect(onRetire).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the deck overlay from the View deck button", async () => {
     render(
       <CombatScreen
@@ -181,6 +205,7 @@ describe("CombatScreen", () => {
         deck={[]}
         onWin={() => {}}
         onLoss={() => {}}
+        onRetire={() => {}}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /view deck/i }));

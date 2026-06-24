@@ -23,9 +23,13 @@ This screen is displayed when the player is in an adventure but is not currently
 
 - Background image
 - "View Deck" icon button in the top right corner
+- Hamburger menu icon button in the top left corner with the following menu items:
+  - Retire: Wipes the player's current run and returns the player to the Home screen
 - Players arcanist character sprite is on the left facing right
 - Enemy sprites are on the right facing left
-- Players hand is in the bottom center of the screen.
+- Players hand is in the bottom center of the screen
+- Player Mana tracker in the bottom left
+- The "End Turn" button is in the bottom right
 
 ## Card appearance
 

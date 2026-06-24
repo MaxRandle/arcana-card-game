@@ -63,6 +63,10 @@ export default function CombatPage() {
         clearRun();
         router.replace("/");
       }}
+      onRetire={() => {
+        clearRun();
+        router.replace("/");
+      }}
     />
   );
 }

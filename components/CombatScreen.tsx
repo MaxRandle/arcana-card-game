@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CombatState, Unit, endTurn, playCard } from "@/utils/combat";
 import { CardInstance, Rng } from "@/utils/deck";
-import { ScreenBackground } from "@/ui/ScreenBackground";
 import { CardView } from "@/ui/CardView";
 import { DeckView } from "./DeckView";
 import arcanistSprite from "@/assets/sprites/arcanist.png";
@@ -20,6 +19,8 @@ interface CombatScreenProps {
   deck: string[];
   onWin: () => void;
   onLoss: () => void;
+  /** Wipes the run and returns to Home (the menu's Retire action). */
+  onRetire: () => void;
   /** Injectable for deterministic draws in tests. */
   rng?: Rng;
 }
@@ -34,10 +35,12 @@ export function CombatScreen({
   deck,
   onWin,
   onLoss,
+  onRetire,
   rng = Math.random,
 }: CombatScreenProps) {
   const [state, setState] = useState(initialState);
   const [deckOpen, setDeckOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [pointer, setPointer] = useState<Pointer | null>(null);
   // Where the held card sits in the hand — the targeting arrow's anchor.
@@ -97,7 +100,36 @@ export function CombatScreen({
 
   return (
     <main className="relative flex min-h-full flex-1 flex-col overflow-hidden p-6">
-      <ScreenBackground />
+      {/* Top-left hamburger menu */}
+      <div className="absolute left-4 top-4 z-30">
+        <button
+          type="button"
+          aria-label="Menu"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          className="rounded-md bg-black/50 px-3 py-2 text-2xl leading-none text-white hover:bg-black/70"
+        >
+          ☰
+        </button>
+        {menuOpen && (
+          <ul
+            role="menu"
+            className="absolute left-0 mt-2 min-w-40 overflow-hidden rounded-md bg-zinc-900 text-white shadow-xl"
+          >
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onRetire}
+                className="block w-full px-4 py-2 text-left hover:bg-white/10"
+              >
+                Retire
+              </button>
+            </li>
+          </ul>
+        )}
+      </div>
 
       <button
         type="button"
@@ -110,7 +142,7 @@ export function CombatScreen({
 
       <div
         aria-label="Mana"
-        className="absolute left-4 top-4 flex items-center gap-2 rounded-md bg-sky-900/70 px-3 py-2 text-white"
+        className="absolute bottom-6 left-6 z-30 flex items-center gap-2 rounded-md bg-sky-900/70 px-3 py-2 text-white"
       >
         <span aria-hidden className="text-xl leading-none">
           💧
