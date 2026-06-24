@@ -207,7 +207,7 @@ Cards are played by drag-to-target mouse gestures. The player mouses over a card
 
 **Targeted cards**:
 
-When targeting a unit with a card, the player drags the card onto the unit's visible sprite in the encounter view. The card visibly floats above the hand and a targeting arrow is drawn from the card to the unit's sprite for visual indication of which unit the card will target.
+When targeting a unit with a card, the player clicks on a card and drags the cursor over onto the target unit's sprite in the encounter view. The card rises up in the player's hand slightly, and a targeting arrow is drawn from the card to the unit's sprite for visual indication of which unit the card will target.
 
 **Untargeted cards**:
 
