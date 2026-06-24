@@ -198,7 +198,10 @@ function Hand({
         const lifted = held && draggingTargeted;
         const hidden = held && !draggingTargeted;
         const rotate = lifted ? 0 : offset * 4;
-        const lift = lifted ? -2.5 : 0;
+        // Arrange the hand as a shallow bow: edge cards sit lower than the
+        // centre ones (a parabola in the card's distance from centre).
+        const arc = lifted ? 0 : offset * offset * 0.18;
+        const lift = (lifted ? -2.5 : 0) + arc;
         return (
           <li
             key={c.instanceId}
