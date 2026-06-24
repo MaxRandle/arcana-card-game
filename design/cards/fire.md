@@ -11,6 +11,7 @@
 - Mana: 2
 - Target: N/A
 - Effect: Each burning enemy seeds another random enemy with 1 stack of burn;
+- Notes: Snapshots the set of burning enemies at cast time. Each burning enemy applies a single burn stack to another random enemy. Can target already burning enemies. Burning enemies cannot burn themselves this way.
 
 ## Purging flame
 

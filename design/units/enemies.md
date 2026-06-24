@@ -1,4 +1,4 @@
-# Enemy list
+# Enemy unit list
 
 ## Fast knight
 
@@ -48,12 +48,12 @@ Action cycle:
 
 ### Actions
 
-- Blood rage: Deal 1 damage to self every turn.
+- Blood tithe: Lose 1 hp every turn.
 
 Action cycle:
 
-1. Blood rage
+1. Blood tithe
 
 ### Passive abilities
 
-- Barbarian's rage: Gains 1 attack each time it takes damage.
+- Rage: Gains 1 attack each time it loses hp.

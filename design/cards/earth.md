@@ -16,7 +16,7 @@
 
 - Mana: 2
 - Target: Player
-- Effect: Fleeting; Whenever you are attacked, deal 2 damage to all enemies;
+- Effect: Gain 1 stack of Tremors;
 
 ## Physical energy
 

@@ -1,29 +1,20 @@
-## Stats
-
-### Attack stat
-
-The unit deals this damage to all enemies equal to the attack stat value at the end of the unit's turn.
-
-### Block stat
-
-The unit reduces incoming instances of damage by a flat amount equal to the block stat value.
-
-### Hitpoints
-
-How much damage the unit can sustain before it dies.
-
 ## Buffs
 
 ### Twinketoes
 
-25% chance to evade attacks.
+- Description: 25% chance to evade attacks;
+- Notes: attacks that can be blocked can be evaded, resulting in no damage taken.
+
+### Tremors
+
+- Description: Whenever you are attacked, deal 2 damage to all enemies; Lose 1 stack per turn;
 
 ## Debuffs
 
 ### Burn
 
-Stackable, unit takes 1 damage at the start of it's turn per stack of burn.
+- Description: Unit takes 1 damage per turn per stack of burn;
 
-### Static
+### Potential
 
-Stackable, has no effect by itself.
+- Description: Affects the power of certain Lightning cards;
