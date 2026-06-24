@@ -40,22 +40,21 @@ export function CombatScreen({
   const [deckOpen, setDeckOpen] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [pointer, setPointer] = useState<Pointer | null>(null);
+  // Where the held card sits in the hand — the targeting arrow's anchor.
+  const [origin, setOrigin] = useState<Pointer | null>(null);
 
   useEffect(() => {
     if (state.outcome === "win") onWin();
     else if (state.outcome === "loss") onLoss();
   }, [state.outcome, onWin, onLoss]);
 
-  // While a card is held, track the cursor (for the floating card + arrow) and
+  // While a card is held, track the cursor (for the arrow / floating card) and
   // cancel the drag if the player releases anywhere but a valid target.
   useEffect(() => {
     if (dragging === null) return;
     const onMove = (e: PointerEvent) =>
       setPointer({ x: e.clientX, y: e.clientY });
-    const onUp = () => {
-      setDragging(null);
-      setPointer(null);
-    };
+    const onUp = cancelDrag;
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
@@ -69,20 +68,32 @@ export function CombatScreen({
   const decided = state.outcome !== "ongoing";
 
   function startDrag(instanceId: string, e: React.PointerEvent) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     setDragging(instanceId);
     setPointer({ x: e.clientX, y: e.clientY });
+  }
+
+  function cancelDrag() {
+    setDragging(null);
+    setPointer(null);
+    setOrigin(null);
   }
 
   function dropOn(unit: Unit) {
     if (dragging === null) return;
     setState((s) => playCard(s, dragging, unit.id));
-    setDragging(null);
-    setPointer(null);
+    cancelDrag();
   }
 
   const heldCard = dragging
     ? state.deck.hand.find((c) => c.instanceId === dragging)
     : undefined;
+  // Targeted cards stay lifted in the hand and draw an arrow to the cursor;
+  // untargeted cards float above the hand following the cursor (no arrow).
+  const heldTargeted = heldCard
+    ? heldCard.card.targeting !== "untargeted"
+    : false;
 
   return (
     <main className="relative flex min-h-full flex-1 flex-col p-6">
@@ -117,7 +128,12 @@ export function CombatScreen({
         </div>
       </div>
 
-      <Hand cards={state.deck.hand} dragging={dragging} onGrab={startDrag} />
+      <Hand
+        cards={state.deck.hand}
+        dragging={dragging}
+        draggingTargeted={heldTargeted}
+        onGrab={startDrag}
+      />
 
       <button
         type="button"
@@ -128,27 +144,28 @@ export function CombatScreen({
         End turn
       </button>
 
-      {/* Targeting arrow + the floating card while dragging. */}
-      {heldCard && pointer && (
-        <>
-          <svg className="pointer-events-none fixed inset-0 z-40 h-full w-full">
-            <line
-              x1="50%"
-              y1="100%"
-              x2={pointer.x}
-              y2={pointer.y}
-              stroke="#fbbf24"
-              strokeWidth={4}
-              strokeDasharray="8 6"
-            />
-          </svg>
-          <div
-            className="pointer-events-none fixed z-50 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
-            style={{ left: pointer.x, top: pointer.y }}
-          >
-            <CardView card={heldCard.card} />
-          </div>
-        </>
+      {/* Targeted: the card stays lifted in the hand; only an arrow follows the
+          cursor. Untargeted: the card floats above the hand, no arrow. */}
+      {heldCard && pointer && heldTargeted && origin && (
+        <svg className="pointer-events-none fixed inset-0 z-40 h-full w-full">
+          <line
+            x1={origin.x}
+            y1={origin.y}
+            x2={pointer.x}
+            y2={pointer.y}
+            stroke="#fbbf24"
+            strokeWidth={4}
+            strokeDasharray="8 6"
+          />
+        </svg>
+      )}
+      {heldCard && pointer && !heldTargeted && (
+        <div
+          className="pointer-events-none fixed z-50 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+          style={{ left: pointer.x, top: pointer.y }}
+        >
+          <CardView card={heldCard.card} />
+        </div>
       )}
 
       {deckOpen && <DeckView cards={deck} onClose={() => setDeckOpen(false)} />}
@@ -159,10 +176,13 @@ export function CombatScreen({
 function Hand({
   cards,
   dragging,
+  draggingTargeted,
   onGrab,
 }: {
   cards: CardInstance[];
   dragging: string | null;
+  /** True when the held card is targeted (it stays lifted, not floated away). */
+  draggingTargeted: boolean;
   onGrab: (instanceId: string, e: React.PointerEvent) => void;
 }) {
   return (
@@ -172,6 +192,13 @@ function Hand({
     >
       {cards.map((c, i) => {
         const offset = i - (cards.length - 1) / 2;
+        const held = dragging === c.instanceId;
+        // A held targeted card rises in place; a held untargeted card is hidden
+        // here because it floats above the hand following the cursor instead.
+        const lifted = held && draggingTargeted;
+        const hidden = held && !draggingTargeted;
+        const rotate = lifted ? 0 : offset * 4;
+        const lift = lifted ? -2.5 : 0;
         return (
           <li
             key={c.instanceId}
@@ -180,8 +207,8 @@ function Hand({
             aria-label={`Play ${c.card.title}`}
             onPointerDown={(e) => onGrab(c.instanceId, e)}
             style={{
-              transform: `translateX(${offset * 1.5}rem) rotate(${offset * 4}deg)`,
-              visibility: dragging === c.instanceId ? "hidden" : "visible",
+              transform: `translateX(${offset * 1.5}rem) translateY(${lift}rem) rotate(${rotate}deg)`,
+              visibility: hidden ? "hidden" : "visible",
             }}
             className="pointer-events-auto -mx-6 h-44 w-32 origin-bottom cursor-grab transition-transform hover:-translate-y-4 active:cursor-grabbing"
           >
