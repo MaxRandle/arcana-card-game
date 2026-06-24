@@ -1,9 +1,16 @@
-// Combat engine — the attack-only tracer for the turn loop. Pure and
-// UI-free: every function takes a state and returns a new one, so the screen
-// is a thin renderer over this module. Later slices (mana, draw, play, enemy
-// actions) extend the no-op phases noted in `endTurn`.
+// Combat engine — the turn loop. Pure and UI-free: every function takes a
+// state and returns a new one, so the screen is a thin renderer over this
+// module. Deck pile mechanics live in `./deck`; this module orchestrates the
+// phases (mana, draw, play, attack) over them.
+
+import { DeckState, CardInstance, Rng, createDeckState, draw } from "./deck";
+import { TargetingMode } from "./cards";
 
 export type Side = "player" | "enemy";
+
+const MANA_START = 1;
+const MANA_PER_TURN = 2;
+const DRAW_PER_TURN = 1;
 
 export interface Unit {
   id: string;
@@ -24,6 +31,9 @@ export interface CombatState {
   /** Whose turn it is when combat is paused awaiting input (the Play phase). */
   turn: Side;
   outcome: Outcome;
+  /** Arcanist mana available in the Play phase. Carries across turns, no cap. */
+  mana: number;
+  deck: DeckState;
 }
 
 // Reduce a unit's hp by one damage instance. Block is subtracted per instance
@@ -34,29 +44,105 @@ export function applyDamage(unit: Unit, amount: number): Unit {
   return { ...unit, hp: Math.max(0, unit.hp - net) };
 }
 
-export function createCombat(arcanist: Unit, enemies: Unit[]): CombatState {
-  // Player turn opens with Effect → Mana → Draw → Play; all no-ops this slice,
-  // so combat simply waits on the Play phase for End turn.
-  return { units: [arcanist, ...enemies], turn: "player", outcome: "ongoing" };
+export function createCombat(
+  arcanist: Unit,
+  enemies: Unit[],
+  deckCards: CardInstance[] = [],
+  rng: Rng = Math.random,
+): CombatState {
+  const base: CombatState = {
+    units: [arcanist, ...enemies],
+    turn: "player",
+    outcome: "ongoing",
+    mana: MANA_START,
+    deck: createDeckState(deckCards, rng),
+  };
+  // Open turn 1 by running its Effect → Mana → Draw, landing in the Play phase.
+  return beginPlayerTurn(base, rng);
+}
+
+// Run the player turn's opening phases (Effect → Mana → Draw) and pause in the
+// Play phase. Effect is a no-op this slice. Mana gains MANA_PER_TURN, carrying
+// the prior remainder; Draw draws one card.
+function beginPlayerTurn(state: CombatState, rng: Rng): CombatState {
+  return {
+    ...state,
+    turn: "player",
+    mana: state.mana + MANA_PER_TURN,
+    deck: draw(state.deck, DRAW_PER_TURN, rng),
+  };
+}
+
+// Play a card from the hand at a target unit. Blocked (state unchanged) when
+// the card is missing or mana is insufficient. The card moves through the
+// in-play position while its effect resolves, then to the discard.
+export function playCard(
+  state: CombatState,
+  instanceId: string,
+  targetId: string,
+): CombatState {
+  if (state.outcome !== "ongoing") return state;
+
+  const played = state.deck.hand.find((c) => c.instanceId === instanceId);
+  if (!played || state.mana < played.card.cost) return state;
+
+  const target = state.units.find((u) => u.id === targetId);
+  if (!isLegalTarget(played.card.targeting, target)) return state;
+
+  const deckInPlay: DeckState = {
+    ...state.deck,
+    hand: state.deck.hand.filter((c) => c.instanceId !== instanceId),
+    inPlay: played,
+  };
+
+  // Resolve the effect: deal the card's damage to the living target, then prune
+  // the dead. A target already gone fizzles silently.
+  let units = state.units;
+  if (units.some((u) => u.id === targetId && u.hp > 0)) {
+    units = units
+      .map((u) =>
+        u.id === targetId && u.hp > 0 ? applyDamage(u, played.card.damage) : u,
+      )
+      .filter((u) => u.hp > 0);
+  }
+
+  // Discard only after resolution.
+  const deck: DeckState = {
+    ...deckInPlay,
+    inPlay: null,
+    discard: [...deckInPlay.discard, played],
+  };
+
+  return {
+    ...state,
+    units,
+    deck,
+    mana: state.mana - played.card.cost,
+    outcome: outcomeOf(units),
+  };
 }
 
 // End the Play phase: resolve the player's Attack phase, then the enemy turn
 // (Effect → Attack → Action; only Attack does work here), then hand control
 // back to the player. A no-op once combat is already decided.
-export function endTurn(state: CombatState): CombatState {
+export function endTurn(
+  state: CombatState,
+  rng: Rng = Math.random,
+): CombatState {
   if (state.outcome !== "ongoing") return state;
 
   let units = resolveAttacks(state.units, "player");
   if (outcomeOf(units) !== "ongoing") {
-    return { units, turn: "player", outcome: outcomeOf(units) };
+    return { ...state, units, turn: "player", outcome: outcomeOf(units) };
   }
 
   units = resolveAttacks(units, "enemy");
   if (outcomeOf(units) !== "ongoing") {
-    return { units, turn: "enemy", outcome: outcomeOf(units) };
+    return { ...state, units, turn: "enemy", outcome: outcomeOf(units) };
   }
 
-  return { units, turn: "player", outcome: "ongoing" };
+  // Hand control back to the player, running their next Mana/Draw phases.
+  return beginPlayerTurn({ ...state, units, outcome: "ongoing" }, rng);
 }
 
 // Every living unit on the attacking side hits all living opponents for its
@@ -85,6 +171,26 @@ function resolveAttacks(units: Unit[], attackingSide: Side): Unit[] {
   }
 
   return current;
+}
+
+// A card resolves only against a unit its targeting mode allows, so an
+// enemy-only card cannot be dropped on a friendly unit. (Untargeted cards take
+// no unit and arrive in a later slice.)
+function isLegalTarget(
+  targeting: TargetingMode,
+  target: Unit | undefined,
+): boolean {
+  if (!target) return false;
+  switch (targeting) {
+    case "enemy":
+      return target.side === "enemy";
+    case "player":
+      return target.side === "player";
+    case "any":
+      return true;
+    case "untargeted":
+      return false;
+  }
 }
 
 function living(units: Unit[], id: string): Unit | undefined {

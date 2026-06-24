@@ -1,13 +1,16 @@
 "use client";
 
 // Thin renderer over the combat engine: paints the two units with always-on
-// stats and drives the turn loop through `endTurn`. All combat logic lives in
-// `@/utils/combat`; this layer only reflects state and reports the outcome.
+// stats, the fanned hand, and the mana indicator, and drives the turn loop
+// through `endTurn`/`playCard`. All combat logic lives in `@/utils/combat`;
+// this layer only reflects state, handles drag-to-target, and reports outcome.
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { CombatState, Unit, endTurn } from "@/utils/combat";
+import { CombatState, Unit, endTurn, playCard } from "@/utils/combat";
+import { CardInstance, Rng } from "@/utils/deck";
 import { ScreenBackground } from "@/ui/ScreenBackground";
+import { CardView } from "@/ui/CardView";
 import { DeckView } from "./DeckView";
 import arcanistSprite from "@/assets/sprites/arcanist.png";
 import knightSprite from "@/assets/sprites/knight.png";
@@ -17,6 +20,13 @@ interface CombatScreenProps {
   deck: string[];
   onWin: () => void;
   onLoss: () => void;
+  /** Injectable for deterministic draws in tests. */
+  rng?: Rng;
+}
+
+interface Pointer {
+  x: number;
+  y: number;
 }
 
 export function CombatScreen({
@@ -24,18 +34,55 @@ export function CombatScreen({
   deck,
   onWin,
   onLoss,
+  rng = Math.random,
 }: CombatScreenProps) {
   const [state, setState] = useState(initialState);
   const [deckOpen, setDeckOpen] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [pointer, setPointer] = useState<Pointer | null>(null);
 
   useEffect(() => {
     if (state.outcome === "win") onWin();
     else if (state.outcome === "loss") onLoss();
   }, [state.outcome, onWin, onLoss]);
 
+  // While a card is held, track the cursor (for the floating card + arrow) and
+  // cancel the drag if the player releases anywhere but a valid target.
+  useEffect(() => {
+    if (dragging === null) return;
+    const onMove = (e: PointerEvent) =>
+      setPointer({ x: e.clientX, y: e.clientY });
+    const onUp = () => {
+      setDragging(null);
+      setPointer(null);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [dragging]);
+
   const arcanist = state.units.find((u) => u.side === "player");
   const enemies = state.units.filter((u) => u.side === "enemy");
   const decided = state.outcome !== "ongoing";
+
+  function startDrag(instanceId: string, e: React.PointerEvent) {
+    setDragging(instanceId);
+    setPointer({ x: e.clientX, y: e.clientY });
+  }
+
+  function dropOn(unit: Unit) {
+    if (dragging === null) return;
+    setState((s) => playCard(s, dragging, unit.id));
+    setDragging(null);
+    setPointer(null);
+  }
+
+  const heldCard = dragging
+    ? state.deck.hand.find((c) => c.instanceId === dragging)
+    : undefined;
 
   return (
     <main className="relative flex min-h-full flex-1 flex-col p-6">
@@ -50,34 +97,116 @@ export function CombatScreen({
         🂠
       </button>
 
+      <div
+        aria-label="Mana"
+        className="absolute left-4 top-4 flex items-center gap-2 rounded-md bg-sky-900/70 px-3 py-2 text-white"
+      >
+        <span aria-hidden className="text-xl leading-none">
+          💧
+        </span>
+        <span className="text-lg font-semibold tabular-nums">{state.mana}</span>
+      </div>
+
       {/* Battlefield: arcanist on the left, enemies on the right. */}
       <div className="flex flex-1 items-center justify-between gap-8 px-4">
-        {arcanist && <UnitView unit={arcanist} />}
+        {arcanist && <UnitView unit={arcanist} onDrop={dropOn} />}
         <div className="flex items-center gap-8">
           {enemies.map((enemy) => (
-            <UnitView key={enemy.id} unit={enemy} />
+            <UnitView key={enemy.id} unit={enemy} onDrop={dropOn} />
           ))}
         </div>
       </div>
 
+      <Hand cards={state.deck.hand} dragging={dragging} onGrab={startDrag} />
+
       <button
         type="button"
-        onClick={() => setState(endTurn(state))}
+        onClick={() => setState(endTurn(state, rng))}
         disabled={decided}
-        className="mx-auto mb-8 rounded-full bg-amber-600 px-10 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500 disabled:opacity-50"
+        className="absolute bottom-8 right-6 z-30 rounded-full bg-amber-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500 disabled:opacity-50"
       >
         End turn
       </button>
+
+      {/* Targeting arrow + the floating card while dragging. */}
+      {heldCard && pointer && (
+        <>
+          <svg className="pointer-events-none fixed inset-0 z-40 h-full w-full">
+            <line
+              x1="50%"
+              y1="100%"
+              x2={pointer.x}
+              y2={pointer.y}
+              stroke="#fbbf24"
+              strokeWidth={4}
+              strokeDasharray="8 6"
+            />
+          </svg>
+          <div
+            className="pointer-events-none fixed z-50 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: pointer.x, top: pointer.y }}
+          >
+            <CardView card={heldCard.card} />
+          </div>
+        </>
+      )}
 
       {deckOpen && <DeckView cards={deck} onClose={() => setDeckOpen(false)} />}
     </main>
   );
 }
 
-function UnitView({ unit }: { unit: Unit }) {
+function Hand({
+  cards,
+  dragging,
+  onGrab,
+}: {
+  cards: CardInstance[];
+  dragging: string | null;
+  onGrab: (instanceId: string, e: React.PointerEvent) => void;
+}) {
+  return (
+    <ul
+      aria-label="Hand"
+      className="pointer-events-none absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 justify-center"
+    >
+      {cards.map((c, i) => {
+        const offset = i - (cards.length - 1) / 2;
+        return (
+          <li
+            key={c.instanceId}
+            role="button"
+            tabIndex={0}
+            aria-label={`Play ${c.card.title}`}
+            onPointerDown={(e) => onGrab(c.instanceId, e)}
+            style={{
+              transform: `translateX(${offset * 1.5}rem) rotate(${offset * 4}deg)`,
+              visibility: dragging === c.instanceId ? "hidden" : "visible",
+            }}
+            className="pointer-events-auto -mx-6 h-44 w-32 origin-bottom cursor-grab transition-transform hover:-translate-y-4 active:cursor-grabbing"
+          >
+            <CardView card={c.card} />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function UnitView({
+  unit,
+  onDrop,
+}: {
+  unit: Unit;
+  onDrop: (unit: Unit) => void;
+}) {
   const sprite = unit.side === "player" ? arcanistSprite : knightSprite;
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div
+      aria-label={`${unit.name} target`}
+      onPointerUp={() => onDrop(unit)}
+      className="flex flex-col items-center gap-2"
+    >
       <Image
         src={sprite}
         alt={unit.name}

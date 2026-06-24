@@ -6,11 +6,12 @@ import { CombatScreen } from "@/components/CombatScreen";
 import { usePersistedRun } from "@/components/use-persisted-run";
 import { clearRun } from "@/utils/run-storage";
 import { Unit, createCombat } from "@/utils/combat";
+import { DEBUG_DECK, toInstances } from "@/utils/cards";
 
 // Temporary "start combat" entry point. The real encounter/level flow (which
-// enemy, with what stats) arrives in slice 08; for now this drops the arcanist
-// into a single demo fight so the turn loop is demoable end-to-end. The dummy
-// enemy is deliberately beatable with the arcanist's bare atk of 1.
+// enemy, with what stats) and real drafting arrive in slice 08; for now this
+// drops the arcanist into a single demo fight, seeded with the debug deck, so
+// the card-play loop is demoable end-to-end.
 
 function makeArcanist(): Unit {
   return {
@@ -29,9 +30,9 @@ function makeDemoEnemy(): Unit {
     id: "knight",
     name: "Knight",
     side: "enemy",
-    hp: 3,
-    maxHp: 3,
-    atk: 5,
+    hp: 20,
+    maxHp: 20,
+    atk: 3,
     blk: 0,
   };
 }
@@ -41,7 +42,8 @@ export default function CombatPage() {
   const run = usePersistedRun();
 
   const initialState = useMemo(
-    () => createCombat(makeArcanist(), [makeDemoEnemy()]),
+    () =>
+      createCombat(makeArcanist(), [makeDemoEnemy()], toInstances(DEBUG_DECK)),
     [],
   );
 

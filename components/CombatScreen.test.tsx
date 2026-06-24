@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CombatScreen } from "./CombatScreen";
 import { Unit, createCombat } from "@/utils/combat";
+import { toInstances } from "@/utils/cards";
+
+const noShuffle = () => 0.999999;
 
 function arcanist(overrides: Partial<Unit> = {}): Unit {
   return {
@@ -84,6 +87,91 @@ describe("CombatScreen", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
     expect(onLoss).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows current mana", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("3");
+  });
+
+  it("renders the drawn hand with card details", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+      />,
+    );
+    const hand = screen.getByLabelText("Hand");
+    expect(hand).toHaveTextContent("Windshear");
+    expect(hand).toHaveTextContent("Deal 3 damage.");
+  });
+
+  it("plays a damage card dragged onto an enemy, spending mana", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy({ hp: 10, blk: 0 })],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play windshear/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Knight target"));
+
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/hp\s*7/i);
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
+  });
+
+  it("does not play a card the player cannot afford", () => {
+    render(
+      <CombatScreen
+        // 0 mana: 0 start + 0 gain via a stubbed initial state below
+        initialState={{
+          ...createCombat(
+            arcanist(),
+            [enemy({ hp: 10, blk: 0 })],
+            toInstances(["windshear"]),
+            noShuffle,
+          ),
+          mana: 0,
+        }}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play windshear/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Knight target"));
+
+    // Unchanged: enemy unhurt and card still in hand.
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/hp\s*10/i);
+    expect(screen.getByLabelText("Hand")).toHaveTextContent("Windshear");
   });
 
   it("opens the deck overlay from the View deck button", async () => {

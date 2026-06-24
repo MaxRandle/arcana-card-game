@@ -3,8 +3,11 @@ import {
   CombatState,
   createCombat,
   endTurn,
+  playCard,
   applyDamage,
 } from "./combat";
+import { CardInstance } from "./deck";
+import { Card } from "./cards";
 
 function unit(overrides: Partial<Unit> & Pick<Unit, "id" | "side">): Unit {
   return {
@@ -16,6 +19,26 @@ function unit(overrides: Partial<Unit> & Pick<Unit, "id" | "side">): Unit {
     ...overrides,
   };
 }
+
+const windshear: Card = {
+  cardId: "windshear",
+  title: "Windshear",
+  cost: 1,
+  body: "Deal 3 damage.",
+  targeting: "enemy",
+  damage: 3,
+};
+
+function instances(n: number, card: Card = windshear): CardInstance[] {
+  return Array.from({ length: n }, (_, i) => ({
+    instanceId: `c${i}`,
+    card,
+  }));
+}
+
+// Deterministic rng leaving Fisher-Yates order unchanged, so seeded decks draw
+// predictably in tests.
+const noShuffle = () => 0.999999;
 
 describe("applyDamage", () => {
   it("subtracts the target's block from each instance", () => {
@@ -47,6 +70,102 @@ describe("createCombat", () => {
     expect(state.outcome).toBe("ongoing");
     expect(state.turn).toBe("player");
     expect(state.units).toHaveLength(2);
+  });
+
+  it("opens turn 1's Play phase with 3 mana (1 start + 2 Mana phase)", () => {
+    const state = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy" })],
+      instances(5),
+      noShuffle,
+    );
+    expect(state.mana).toBe(3);
+  });
+
+  it("draws one card into the hand on turn 1", () => {
+    const state = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy" })],
+      instances(5),
+      noShuffle,
+    );
+    expect(state.deck.hand).toHaveLength(1);
+    expect(state.deck.drawPile).toHaveLength(4);
+  });
+});
+
+describe("mana and draw across turns", () => {
+  it("gains 2 mana each turn, carrying the unspent remainder", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 0 });
+    const turn1 = createCombat(arcanist, [enemy], instances(5), noShuffle);
+    const turn2 = endTurn(turn1, noShuffle);
+    expect(turn2.mana).toBe(5); // 3 carried + 2
+  });
+
+  it("draws another card each turn", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 0 });
+    const turn1 = createCombat(arcanist, [enemy], instances(5), noShuffle);
+    const turn2 = endTurn(turn1, noShuffle);
+    expect(turn2.deck.hand).toHaveLength(2);
+  });
+});
+
+describe("playCard", () => {
+  function setup() {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 10, blk: 0, atk: 0 });
+    const state = createCombat(arcanist, [enemy], instances(3), noShuffle);
+    const inHand = state.deck.hand[0].instanceId;
+    return { state, inHand };
+  }
+
+  it("deals the card's damage to the targeted enemy", () => {
+    const { state, inHand } = setup();
+    const next = playCard(state, inHand, "knight");
+    expect(next.units.find((u) => u.id === "knight")!.hp).toBe(7); // 10 - 3
+  });
+
+  it("spends the card's mana cost", () => {
+    const { state, inHand } = setup();
+    const next = playCard(state, inHand, "knight");
+    expect(next.mana).toBe(2); // 3 - 1
+  });
+
+  it("moves the played card to the discard after resolving", () => {
+    const { state, inHand } = setup();
+    const next = playCard(state, inHand, "knight");
+    expect(next.deck.hand.some((c) => c.instanceId === inHand)).toBe(false);
+    expect(next.deck.discard.some((c) => c.instanceId === inHand)).toBe(true);
+    expect(next.deck.inPlay).toBeNull();
+  });
+
+  it("is blocked when mana is insufficient", () => {
+    const { state, inHand } = setup();
+    const broke: CombatState = { ...state, mana: 0 };
+    expect(playCard(broke, inHand, "knight")).toBe(broke);
+  });
+
+  it("is blocked when the target's side breaks the card's targeting mode", () => {
+    const { state, inHand } = setup();
+    // Windshear is enemy-targeted; dropping it on the arcanist must not play.
+    expect(playCard(state, inHand, "arcanist")).toBe(state);
+  });
+
+  it("wins when the played card kills the last enemy", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 3, blk: 0 });
+    const state = createCombat(arcanist, [enemy], instances(3), noShuffle);
+    const next = playCard(state, state.deck.hand[0].instanceId, "knight");
+    expect(next.outcome).toBe("win");
+  });
+
+  it("does not mutate the input state", () => {
+    const { state, inHand } = setup();
+    const snapshot = JSON.parse(JSON.stringify(state));
+    playCard(state, inHand, "knight");
+    expect(state).toEqual(snapshot);
   });
 });
 
