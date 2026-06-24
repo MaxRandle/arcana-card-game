@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { RunState, ctaLabel } from "@/utils/run-state";
-import { ScreenBackground } from "@/ui/ScreenBackground";
 import { DeckView } from "./DeckView";
 
 interface AdventureScreenProps {
@@ -21,8 +20,6 @@ export function AdventureScreen({
 
   return (
     <main className="relative flex min-h-full flex-1 flex-col items-center justify-end p-6">
-      <ScreenBackground />
-
       {/* Top-left hamburger menu */}
       <div className="absolute left-4 top-4">
         <button

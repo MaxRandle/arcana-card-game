@@ -1,7 +1,5 @@
 "use client";
 
-import { ScreenBackground } from "@/ui/ScreenBackground";
-
 interface HomeScreenProps {
   onNewAdventure: () => void;
 }
@@ -9,8 +7,6 @@ interface HomeScreenProps {
 export function HomeScreen({ onNewAdventure }: HomeScreenProps) {
   return (
     <main className="relative flex min-h-full flex-1 flex-col items-center justify-center p-6">
-      <ScreenBackground />
-
       <h1 className="mb-12 text-5xl font-bold tracking-tight text-white drop-shadow-lg">
         Arcana
       </h1>
