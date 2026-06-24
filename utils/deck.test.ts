@@ -14,8 +14,9 @@ const card: Card = {
   title: "Windshear",
   cost: 1,
   body: "Deal 3 damage.",
+  arcana: "air",
   targeting: "enemy",
-  damage: 3,
+  effects: [{ kind: "damage", amount: 3 }],
 };
 
 function instances(n: number): CardInstance[] {

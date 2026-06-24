@@ -85,7 +85,15 @@ export function CombatScreen({
 
   function dropOn(unit: Unit) {
     if (dragging === null) return;
-    setState((s) => playCard(s, dragging, unit.id));
+    setState((s) => playCard(s, dragging, unit.id, rng));
+    cancelDrag();
+  }
+
+  // Releasing an untargeted card anywhere on the battlefield plays it (no unit,
+  // no arrow). Targeted cards ignore a battlefield drop — they need a unit.
+  function dropOnBattlefield() {
+    if (dragging === null || heldTargeted) return;
+    setState((s) => playCard(s, dragging, null, rng));
     cancelDrag();
   }
 
@@ -150,8 +158,13 @@ export function CombatScreen({
         <span className="text-lg font-semibold tabular-nums">{state.mana}</span>
       </div>
 
-      {/* Battlefield: arcanist on the left, enemies on the right. */}
-      <div className="flex flex-1 items-center justify-between gap-8 px-4">
+      {/* Battlefield: arcanist on the left, enemies on the right. Releasing an
+          untargeted card here plays it. */}
+      <div
+        aria-label="Battlefield"
+        onPointerUp={dropOnBattlefield}
+        className="flex flex-1 items-center justify-between gap-8 px-4"
+      >
         {arcanist && <UnitView unit={arcanist} onDrop={dropOn} />}
         <div className="flex items-center gap-8">
           {enemies.map((enemy) => (
@@ -266,7 +279,11 @@ function UnitView({
   return (
     <div
       aria-label={`${unit.name} target`}
-      onPointerUp={() => onDrop(unit)}
+      onPointerUp={(e) => {
+        // Don't also fire the battlefield drop behind this sprite.
+        e.stopPropagation();
+        onDrop(unit);
+      }}
       className="flex flex-col items-center gap-2"
     >
       <Image

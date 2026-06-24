@@ -154,6 +154,31 @@ describe("CombatScreen", () => {
     expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
   });
 
+  it("plays an untargeted card dragged onto the battlefield (no unit)", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          // mental-energy is untargeted: "Draw 2 cards".
+          toInstances(["mental-energy", "windshear", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play mental energy/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Battlefield"));
+
+    // The card resolved (drew 2 more) and spent its mana (3 - 1).
+    expect(screen.getByLabelText("Hand")).not.toHaveTextContent("Mental energy");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
+  });
+
   it("does not play a card the player cannot afford", () => {
     render(
       <CombatScreen

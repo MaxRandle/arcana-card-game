@@ -5,24 +5,17 @@
 
 import { DeckState, CardInstance, Rng, createDeckState, draw } from "./deck";
 import { TargetingMode } from "./cards";
+import { Side, Unit, applyDamage } from "./units";
+import { resolveEffects } from "./effects";
 
-export type Side = "player" | "enemy";
+// Re-exported so existing combat consumers keep importing unit primitives from
+// here; their canonical home is `./units`.
+export type { Side, Unit };
+export { applyDamage };
 
 const MANA_START = 1;
 const MANA_PER_TURN = 2;
 const DRAW_PER_TURN = 1;
-
-export interface Unit {
-  id: string;
-  name: string;
-  side: Side;
-  hp: number;
-  maxHp: number;
-  /** Damage dealt to every opponent on this unit's attack phase. */
-  atk: number;
-  /** Flat reduction applied per incoming damage instance; may be negative. */
-  blk: number;
-}
 
 export type Outcome = "ongoing" | "win" | "loss";
 
@@ -34,14 +27,6 @@ export interface CombatState {
   /** Arcanist mana available in the Play phase. Carries across turns, no cap. */
   mana: number;
   deck: DeckState;
-}
-
-// Reduce a unit's hp by one damage instance. Block is subtracted per instance
-// and can go negative (increasing damage); net damage never heals, and hp
-// never drops below 0.
-export function applyDamage(unit: Unit, amount: number): Unit {
-  const net = Math.max(0, amount - unit.blk);
-  return { ...unit, hp: Math.max(0, unit.hp - net) };
 }
 
 export function createCombat(
@@ -73,21 +58,22 @@ function beginPlayerTurn(state: CombatState, rng: Rng): CombatState {
   };
 }
 
-// Play a card from the hand at a target unit. Blocked (state unchanged) when
-// the card is missing or mana is insufficient. The card moves through the
-// in-play position while its effect resolves, then to the discard.
+// Play a card from the hand at a target (a unit id, or null for an untargeted
+// card). Blocked (state unchanged) when the card is missing, mana is
+// insufficient, or the target breaks the card's targeting mode. The card moves
+// to the in-play position while its clauses resolve left-to-right, then to the
+// discard — so it cannot be redrawn by its own draw effect.
 export function playCard(
   state: CombatState,
   instanceId: string,
-  targetId: string,
+  targetId: string | null,
+  rng: Rng = Math.random,
 ): CombatState {
   if (state.outcome !== "ongoing") return state;
 
   const played = state.deck.hand.find((c) => c.instanceId === instanceId);
   if (!played || state.mana < played.card.cost) return state;
-
-  const target = state.units.find((u) => u.id === targetId);
-  if (!isLegalTarget(played.card.targeting, target)) return state;
+  if (!isLegalTarget(played.card.targeting, targetId, state.units)) return state;
 
   const deckInPlay: DeckState = {
     ...state.deck,
@@ -95,30 +81,26 @@ export function playCard(
     inPlay: played,
   };
 
-  // Resolve the effect: deal the card's damage to the living target, then prune
-  // the dead. A target already gone fizzles silently.
-  let units = state.units;
-  if (units.some((u) => u.id === targetId && u.hp > 0)) {
-    units = units
-      .map((u) =>
-        u.id === targetId && u.hp > 0 ? applyDamage(u, played.card.damage) : u,
-      )
-      .filter((u) => u.hp > 0);
-  }
+  const resolved = resolveEffects(
+    { units: state.units, mana: state.mana, deck: deckInPlay },
+    played.card.effects,
+    { targetId },
+    rng,
+  );
 
-  // Discard only after resolution.
+  // Discard only after every clause has resolved.
   const deck: DeckState = {
-    ...deckInPlay,
+    ...resolved.deck,
     inPlay: null,
-    discard: [...deckInPlay.discard, played],
+    discard: [...resolved.deck.discard, played],
   };
 
   return {
     ...state,
-    units,
+    units: resolved.units,
     deck,
-    mana: state.mana - played.card.cost,
-    outcome: outcomeOf(units),
+    mana: resolved.mana - played.card.cost,
+    outcome: outcomeOf(resolved.units),
   };
 }
 
@@ -173,13 +155,16 @@ function resolveAttacks(units: Unit[], attackingSide: Side): Unit[] {
   return current;
 }
 
-// A card resolves only against a unit its targeting mode allows, so an
-// enemy-only card cannot be dropped on a friendly unit. (Untargeted cards take
-// no unit and arrive in a later slice.)
+// A card resolves only against a target its targeting mode allows: an
+// enemy-only card cannot be dropped on a friendly unit, and an untargeted card
+// is played onto the battlefield (no unit, so targetId must be null).
 function isLegalTarget(
   targeting: TargetingMode,
-  target: Unit | undefined,
+  targetId: string | null,
+  units: Unit[],
 ): boolean {
+  if (targeting === "untargeted") return targetId === null;
+  const target = units.find((u) => u.id === targetId);
   if (!target) return false;
   switch (targeting) {
     case "enemy":
@@ -188,8 +173,6 @@ function isLegalTarget(
       return target.side === "player";
     case "any":
       return true;
-    case "untargeted":
-      return false;
   }
 }
 
