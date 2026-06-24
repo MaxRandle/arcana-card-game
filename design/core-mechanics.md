@@ -160,17 +160,17 @@ The list of generic cards is as follows:
 
 A single playthrough from an empty Deck through all levels, ending in death or completion. Retiring abandons the run. A run is completed when a player dies or defeats all levels.
 
-Run state is saved between encounters to browser local storage, run progress should survive a browser refresh.
+Run state is saved between encounters to browser local storage. Run progress should survive a browser refresh, current encounter progress should not.
 
 ### Encounters
 
-Encounters are the main combat gameplay element. The player battles one or multiple enemies in turn-based combat. Enemies have simple actions and attacks while the player plays cards. After each encounter the player is rewarded with a card draft.
+Encounters are the main combat gameplay element. The player battles one or multiple enemies in turn-based combat. Enemies have simple actions and attacks while the player plays cards. After each encounter the player is rewarded with a card draft that pulls from the collective card pools of all unlocked arcana.
 
 ### Level
 
 A segment of a run.
 
-The player receives an arcana draft, then 3 card drafts exclusively from that arcanas card pool. Then they must fight 4 encounters to complete the level.
+The player receives an arcana draft, then 3 card drafts exclusively from that arcana's card pool. Then they must fight 4 encounters to complete the level.
 
 The level 1 Arcana draft yields 6 card drafts rather than the usual 3. Subsequent arcana drafts yield the usual amount of card drafts
 
@@ -193,3 +193,22 @@ Some run state is reset between encounters:
 - Buffs / Debuffs
 
 ## Targeting modes
+
+Cards have one of the following targeting mode:
+
+- Untargeted: Card effect is not unit-specific.
+- Enemy units: Can only target enemy units.
+- Player units: Can only target player units.
+- Any unit: Can target player or enemy units.
+
+### Controls
+
+Cards are played by drag-to-target mouse gestures. The player mouses over a card and clicks down and drags, the card is only played when the mouse click is released with the players mouse outside of the hand region on the screen (the screen region outside of the hand is referred to as the battlefield).
+
+**Targeted cards**:
+
+When targeting a unit with a card, the player drags the card onto the unit's visible sprite in the encounter view. The card visibly floats above the hand and a targeting arrow is drawn from the card to the unit's sprite for visual indication of which unit the card will target.
+
+**Untargeted cards**:
+
+When playing a card with no target the player drags the card onto the battlefield. The card visibly floats above the hand but no targeting arrow is drawn.

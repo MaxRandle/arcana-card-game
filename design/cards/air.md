@@ -3,23 +3,23 @@
 ## Windshear
 
 - Mana: 1
-- Target: Enemy
+- Targets: Enemy units
 - Effect: Deal 3 damage
 
 ## Twinkletoes
 
 - Mana: 3
-- Target: Player
+- Targets: Player units
 - Effect: Gain the Twinkletoes buff
 
 ## Tenacity
 
 - Mana: 1
-- Target: Player
+- Targets: Player units
 - Effect: Remove all debuffs
 
 ## Spirit Energy
 
 - Mana: 1
-- Target: Player
+- Targets: Player units
 - Effect: Increases elemental damage you deal by 1

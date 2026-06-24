@@ -3,21 +3,21 @@
 ## Zap
 
 - Mana: 1
-- Target: Enemy
+- Targets: Enemy units
 - Effect: Deal 3 damage; Apply 1 potential;
 
 ## Humble guide
 
 - Mana: 2
-- Target: Enemy
-- Effect: Deal 1 damage for each static on the target;
+- Targets: Enemy units
+- Effect: Deal 1 damage for each potential on the target;
 
 ### Dev notes
 
-Does not remove static from the target.
+Does not remove potential from the target.
 
 ## Mental energy
 
 - Mana: 1
-- Target: N/A
+- Targets: Untargeted
 - Effect: Draw 2 cards;

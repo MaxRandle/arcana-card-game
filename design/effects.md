@@ -8,6 +8,7 @@
 ### Tremors
 
 - Description: Whenever you are attacked, deal 2 damage to all enemies; Lose 1 stack per turn;
+- Notes: The damage does not scale with each stack. Effect triggers when the unit is attacked, irrespective of the current turn order phase.
 
 ## Debuffs
 
