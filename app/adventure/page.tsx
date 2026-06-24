@@ -24,5 +24,11 @@ export default function AdventurePage() {
   // undefined: still resolving on the client. null: redirecting home.
   if (!run) return null;
 
-  return <AdventureScreen run={run} onRetire={retire} />;
+  return (
+    <AdventureScreen
+      run={run}
+      onRetire={retire}
+      onStartCombat={() => router.push("/combat")}
+    />
+  );
 }

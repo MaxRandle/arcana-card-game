@@ -8,9 +8,14 @@ import { DeckView } from "./DeckView";
 interface AdventureScreenProps {
   run: RunState;
   onRetire: () => void;
+  onStartCombat: () => void;
 }
 
-export function AdventureScreen({ run, onRetire }: AdventureScreenProps) {
+export function AdventureScreen({
+  run,
+  onRetire,
+  onStartCombat,
+}: AdventureScreenProps) {
   const [deckOpen, setDeckOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -62,6 +67,7 @@ export function AdventureScreen({ run, onRetire }: AdventureScreenProps) {
       {/* Main CTA */}
       <button
         type="button"
+        onClick={onStartCombat}
         className="mb-12 rounded-full bg-amber-600 px-10 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500"
       >
         {ctaLabel(run)}
