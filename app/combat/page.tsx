@@ -22,6 +22,7 @@ function makeArcanist(): Unit {
     maxHp: 100,
     atk: 1,
     blk: 0,
+    statuses: {},
   };
 }
 
@@ -34,6 +35,7 @@ function makeDemoEnemy(): Unit {
     maxHp: 20,
     atk: 3,
     blk: 0,
+    statuses: {},
   };
 }
 

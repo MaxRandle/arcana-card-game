@@ -7,6 +7,11 @@ import { DeckState, CardInstance, Rng, createDeckState, draw } from "./deck";
 import { TargetingMode } from "./cards";
 import { Side, Unit, applyDamage } from "./units";
 import { resolveEffects } from "./effects";
+import {
+  resolveStatusEffectPhase,
+  resolveTremorsRetaliation,
+  rollEvade,
+} from "./statuses";
 
 // Re-exported so existing combat consumers keep importing unit primitives from
 // here; their canonical home is `./units`.
@@ -42,14 +47,25 @@ export function createCombat(
     mana: MANA_START,
     deck: createDeckState(deckCards, rng),
   };
-  // Open turn 1 by running its Effect → Mana → Draw, landing in the Play phase.
-  return beginPlayerTurn(base, rng);
+  // Turn 1 has no statuses to tick (they reset to empty between encounters), so
+  // its opening skips the Effect phase and runs only Mana → Draw.
+  return manaAndDraw(base, rng);
 }
 
 // Run the player turn's opening phases (Effect → Mana → Draw) and pause in the
-// Play phase. Effect is a no-op this slice. Mana gains MANA_PER_TURN, carrying
-// the prior remainder; Draw draws one card.
+// Play phase. The Effect phase ticks the arcanist's statuses (burn damage,
+// tremors decay) and can end the combat before Mana/Draw run.
 function beginPlayerTurn(state: CombatState, rng: Rng): CombatState {
+  const units = resolveStatusEffectPhase(state.units, "player");
+  const outcome = outcomeOf(units);
+  if (outcome !== "ongoing") return { ...state, units, turn: "player", outcome };
+
+  return manaAndDraw({ ...state, units }, rng);
+}
+
+// Mana gains MANA_PER_TURN, carrying the prior remainder; Draw draws one card.
+// Pauses in the player's Play phase.
+function manaAndDraw(state: CombatState, rng: Rng): CombatState {
   return {
     ...state,
     turn: "player",
@@ -113,12 +129,18 @@ export function endTurn(
 ): CombatState {
   if (state.outcome !== "ongoing") return state;
 
-  let units = resolveAttacks(state.units, "player");
+  let units = resolveAttacks(state.units, "player", rng);
   if (outcomeOf(units) !== "ongoing") {
     return { ...state, units, turn: "player", outcome: outcomeOf(units) };
   }
 
-  units = resolveAttacks(units, "enemy");
+  // Enemy turn opens with its Effect phase (burn ticks, tremors decay).
+  units = resolveStatusEffectPhase(units, "enemy");
+  if (outcomeOf(units) !== "ongoing") {
+    return { ...state, units, turn: "enemy", outcome: outcomeOf(units) };
+  }
+
+  units = resolveAttacks(units, "enemy", rng);
   if (outcomeOf(units) !== "ongoing") {
     return { ...state, units, turn: "enemy", outcome: outcomeOf(units) };
   }
@@ -128,27 +150,40 @@ export function endTurn(
 }
 
 // Every living unit on the attacking side hits all living opponents for its
-// atk. Death is instant and checked after each instance: a unit dropped to 0
-// hp is removed immediately and forfeits any attack it had not yet made.
-function resolveAttacks(units: Unit[], attackingSide: Side): Unit[] {
+// atk. Death is instant and checked after each instance: a unit dropped to 0 hp
+// is removed immediately and forfeits any attack it had not yet made. Each
+// instance consults the target's statuses: Twinkletoes may evade it (negating
+// the damage), and Tremors retaliates whether or not the damage landed — which
+// can itself kill the attacker mid-swing.
+function resolveAttacks(
+  units: Unit[],
+  attackingSide: Side,
+  rng: Rng,
+): Unit[] {
   let current = units;
   const attackerIds = current
     .filter((u) => u.side === attackingSide)
     .map((u) => u.id);
 
   for (const attackerId of attackerIds) {
-    const attacker = living(current, attackerId);
-    if (!attacker) continue; // killed before it could act — attack forfeited
-
     const targetIds = current
       .filter((u) => u.side !== attackingSide && u.hp > 0)
       .map((u) => u.id);
 
     for (const targetId of targetIds) {
-      current = current.map((u) =>
-        u.id === targetId && u.hp > 0 ? applyDamage(u, attacker.atk) : u,
-      );
-      current = current.filter((u) => u.hp > 0);
+      const attacker = living(current, attackerId);
+      if (!attacker) break; // killed (e.g. by Tremors) — forfeit the rest
+      if (!living(current, targetId)) continue; // target already gone
+
+      if (!rollEvade(current.find((u) => u.id === targetId)!, rng)) {
+        current = current
+          .map((u) =>
+            u.id === targetId && u.hp > 0 ? applyDamage(u, attacker.atk) : u,
+          )
+          .filter((u) => u.hp > 0);
+      }
+      // An attack — evaded or not — still triggers the target's Tremors.
+      current = resolveTremorsRetaliation(current, targetId);
     }
   }
 

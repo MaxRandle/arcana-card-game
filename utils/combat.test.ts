@@ -16,6 +16,7 @@ function unit(overrides: Partial<Unit> & Pick<Unit, "id" | "side">): Unit {
     maxHp: 10,
     atk: 1,
     blk: 0,
+    statuses: {},
     ...overrides,
   };
 }
@@ -225,5 +226,60 @@ describe("endTurn", () => {
     const snapshot = JSON.parse(JSON.stringify(state));
     endTurn(state);
     expect(state).toEqual(snapshot);
+  });
+});
+
+describe("statuses in the turn loop", () => {
+  it("burns enemies on the enemy Effect phase", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 10, atk: 0, statuses: { burn: 3 } });
+    const next = endTurn(createCombat(arcanist, [enemy]));
+    expect(next.units.find((u) => u.id === "knight")!.hp).toBe(7);
+  });
+
+  it("burns the arcanist on its own Effect phase next turn", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100, statuses: { burn: 2 } });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 0 });
+    const next = endTurn(createCombat(arcanist, [enemy]));
+    expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(98);
+  });
+
+  it("loses when burn kills the arcanist on its Effect phase", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 2, statuses: { burn: 5 } });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 0 });
+    const next = endTurn(createCombat(arcanist, [enemy]));
+    expect(next.outcome).toBe("loss");
+  });
+
+  it("retaliates with Tremors when the arcanist is attacked", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100, statuses: { tremors: 1 } });
+    const a = unit({ id: "a", side: "enemy", hp: 10, atk: 1 });
+    const b = unit({ id: "b", side: "enemy", hp: 10, atk: 1 });
+    const next = endTurn(createCombat(arcanist, [a, b]));
+    // Each enemy attack triggers a flat 2 to every enemy (two attackers => 4).
+    expect(next.units.find((u) => u.id === "a")!.hp).toBe(6);
+    expect(next.units.find((u) => u.id === "b")!.hp).toBe(6);
+  });
+
+  it("decays Tremors by one stack each turn", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100, statuses: { tremors: 2 } });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 0 });
+    const next = endTurn(createCombat(arcanist, [enemy]));
+    expect(next.units.find((u) => u.id === "arcanist")!.statuses).toEqual({ tremors: 1 });
+  });
+
+  it("evades an attack while Twinkletoes is up and the roll is under 25%", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100, statuses: { twinkletoes: 1 } });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 5 });
+    const evadeRng = () => 0; // always under the 25% threshold
+    const next = endTurn(createCombat(arcanist, [enemy], [], evadeRng), evadeRng);
+    expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(100);
+  });
+
+  it("takes the hit when the evade roll fails", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100, statuses: { twinkletoes: 1 } });
+    const enemy = unit({ id: "knight", side: "enemy", hp: 100, atk: 5 });
+    const next = endTurn(createCombat(arcanist, [enemy]), () => 0.99);
+    expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(95);
   });
 });

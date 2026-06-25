@@ -15,6 +15,7 @@ function arcanist(overrides: Partial<Unit> = {}): Unit {
     maxHp: 100,
     atk: 1,
     blk: 0,
+    statuses: {},
     ...overrides,
   };
 }
@@ -28,6 +29,7 @@ function enemy(overrides: Partial<Unit> = {}): Unit {
     maxHp: 60,
     atk: 1,
     blk: 2,
+    statuses: {},
     ...overrides,
   };
 }

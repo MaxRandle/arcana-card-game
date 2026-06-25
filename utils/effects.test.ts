@@ -12,6 +12,7 @@ function unit(overrides: Partial<Unit> & Pick<Unit, "id" | "side">): Unit {
     maxHp: 10,
     atk: 1,
     blk: 0,
+    statuses: {},
     ...overrides,
   };
 }
@@ -185,6 +186,121 @@ describe("either", () => {
     });
     const next = resolveEffect(s, ebb, { targetId: "arcanist" }, noShuffle);
     expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(8);
+  });
+});
+
+describe("applyStatus", () => {
+  it("adds stacks of a status to the target", () => {
+    const s = state();
+    const next = resolveEffect(
+      s,
+      { kind: "applyStatus", status: "burn", amount: 1 },
+      { targetId: "knight" },
+      noShuffle,
+    );
+    expect(next.units.find((u) => u.id === "knight")!.statuses).toEqual({ burn: 1 });
+  });
+
+  it("defaults to the arcanist for an untargeted clause", () => {
+    const next = resolveEffect(
+      state(),
+      { kind: "applyStatus", status: "twinkletoes", amount: 1 },
+      { targetId: null },
+      noShuffle,
+    );
+    expect(next.units.find((u) => u.id === "arcanist")!.statuses).toEqual({
+      twinkletoes: 1,
+    });
+  });
+});
+
+describe("removeRandomBuff", () => {
+  it("strips one buff after standing in a clause sequence", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "knight", side: "enemy", hp: 10, statuses: { tremors: 1, burn: 2 } }),
+      ],
+    });
+    const next = resolveEffect(s, { kind: "removeRandomBuff" }, { targetId: "knight" }, () => 0);
+    expect(next.units.find((u) => u.id === "knight")!.statuses).toEqual({ burn: 2 });
+  });
+});
+
+describe("removeAllDebuffs", () => {
+  it("strips every debuff from the target, keeping buffs", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player", statuses: { burn: 3, tremors: 1 } }),
+      ],
+    });
+    const next = resolveEffect(s, { kind: "removeAllDebuffs" }, { targetId: "arcanist" }, noShuffle);
+    expect(next.units.find((u) => u.id === "arcanist")!.statuses).toEqual({ tremors: 1 });
+  });
+});
+
+describe("damagePerStatus", () => {
+  it("deals damage scaled by the target's stacks without consuming them", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "knight", side: "enemy", hp: 10, statuses: { potential: 3 } }),
+      ],
+    });
+    const next = resolveEffect(
+      s,
+      { kind: "damagePerStatus", status: "potential", perStack: 1 },
+      { targetId: "knight" },
+      noShuffle,
+    );
+    const knight = next.units.find((u) => u.id === "knight")!;
+    expect(knight.hp).toBe(7); // 10 - 3
+    expect(knight.statuses).toEqual({ potential: 3 }); // not consumed
+  });
+});
+
+describe("seedBurn", () => {
+  it("snapshots burning enemies and seeds one burn each on a different random enemy", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "a", side: "enemy", hp: 10, statuses: { burn: 1 } }),
+        unit({ id: "b", side: "enemy", hp: 10 }),
+      ],
+    });
+    // Only `a` is burning; with one other enemy it must seed `b`.
+    const next = resolveEffect(s, { kind: "seedBurn" }, { targetId: null }, () => 0);
+    expect(next.units.find((u) => u.id === "b")!.statuses).toEqual({ burn: 1 });
+    expect(next.units.find((u) => u.id === "a")!.statuses).toEqual({ burn: 1 });
+  });
+
+  it("seeds from every burning enemy in the cast-time snapshot", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "a", side: "enemy", hp: 10, statuses: { burn: 1 } }),
+        unit({ id: "b", side: "enemy", hp: 10, statuses: { burn: 1 } }),
+        unit({ id: "c", side: "enemy", hp: 10 }),
+      ],
+    });
+    // rng 0 makes each source pick the first of its "others" list (in id order,
+    // excluding itself): a -> b, b -> a, c is not a source. b and a each gain 1.
+    const next = resolveEffect(s, { kind: "seedBurn" }, { targetId: null }, () => 0);
+    expect(next.units.find((u) => u.id === "a")!.statuses).toEqual({ burn: 2 });
+    expect(next.units.find((u) => u.id === "b")!.statuses).toEqual({ burn: 2 });
+    expect(next.units.find((u) => u.id === "c")!.statuses).toEqual({});
+  });
+
+  it("never seeds an enemy onto itself", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "a", side: "enemy", hp: 10, statuses: { burn: 1 } }),
+      ],
+    });
+    // The lone burning enemy has no other enemy to seed — no change.
+    const next = resolveEffect(s, { kind: "seedBurn" }, { targetId: null }, () => 0);
+    expect(next.units.find((u) => u.id === "a")!.statuses).toEqual({ burn: 1 });
   });
 });
 

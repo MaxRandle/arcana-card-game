@@ -7,6 +7,7 @@ function unit(overrides: Partial<Unit> & Pick<Unit, "id" | "side">): Unit {
     maxHp: 10,
     atk: 1,
     blk: 0,
+    statuses: {},
     ...overrides,
   };
 }

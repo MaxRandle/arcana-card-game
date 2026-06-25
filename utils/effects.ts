@@ -5,7 +5,13 @@
 // "lose 1 hp; gain 1 mana") behave deterministically. Pure and UI-free.
 
 import { DeckState, Rng, draw } from "./deck";
-import { Unit, applyDamage } from "./units";
+import { StatusName, Unit, applyDamage } from "./units";
+import {
+  addStatus,
+  removeAllDebuffs,
+  removeRandomBuff,
+  statusStacks,
+} from "./statuses";
 
 // The portion of combat state an effect may read or rewrite. `CombatState`
 // satisfies this shape, so the combat engine resolves effects in place.
@@ -37,7 +43,18 @@ export type Effect =
   // Splash: `target` damage to the target, `others` to every other enemy.
   | { kind: "splash"; target: number; others: number }
   // Any-unit cards (e.g. Ebb & flow): branch on the targeted side.
-  | { kind: "either"; enemy: Effect[]; player: Effect[] };
+  | { kind: "either"; enemy: Effect[]; player: Effect[] }
+  // Add stacks of a buff/debuff to the target.
+  | { kind: "applyStatus"; status: StatusName; amount: number }
+  // Strip one random buff from the target (Purging flame).
+  | { kind: "removeRandomBuff" }
+  // Strip every debuff from the target (Tenacity).
+  | { kind: "removeAllDebuffs" }
+  // Deal `perStack` damage per stack of `status` on the target, leaving the
+  // status in place (Humble guide reads Potential without consuming it).
+  | { kind: "damagePerStatus"; status: StatusName; perStack: number }
+  // Conflagration: each burning enemy seeds 1 burn onto another random enemy.
+  | { kind: "seedBurn" };
 
 export function resolveEffects(
   state: EffectState,
@@ -87,7 +104,51 @@ export function resolveEffect(
       const branch = target.side === "enemy" ? effect.enemy : effect.player;
       return resolveEffects(state, branch, ctx, rng);
     }
+    case "applyStatus":
+      return mapTarget(state, ctx, (u) => ({
+        ...u,
+        statuses: addStatus(u.statuses, effect.status, effect.amount),
+      }));
+    case "removeRandomBuff":
+      return mapTarget(state, ctx, (u) => ({
+        ...u,
+        statuses: removeRandomBuff(u.statuses, rng),
+      }));
+    case "removeAllDebuffs":
+      return mapTarget(state, ctx, (u) => ({
+        ...u,
+        statuses: removeAllDebuffs(u.statuses),
+      }));
+    case "damagePerStatus":
+      return mapTarget(state, ctx, (u) =>
+        applyDamage(u, statusStacks(u.statuses, effect.status) * effect.perStack),
+      );
+    case "seedBurn":
+      return resolveSeedBurn(state, rng);
   }
+}
+
+// Conflagration. Snapshots the burning enemies at cast, then each seeds 1 burn
+// onto a different random enemy (chosen from the same snapshot, so a freshly
+// seeded enemy is never itself a source and no enemy burns itself).
+function resolveSeedBurn(state: EffectState, rng: Rng): EffectState {
+  const enemies = state.units.filter((u) => u.side === "enemy" && u.hp > 0);
+  const burning = enemies.filter((u) => statusStacks(u.statuses, "burn") > 0);
+
+  const seeds: Record<string, number> = {};
+  for (const source of burning) {
+    const others = enemies.filter((e) => e.id !== source.id);
+    if (others.length === 0) continue;
+    const pick = others[Math.floor(rng() * others.length)];
+    seeds[pick.id] = (seeds[pick.id] ?? 0) + 1;
+  }
+
+  const units = state.units.map((u) =>
+    seeds[u.id]
+      ? { ...u, statuses: addStatus(u.statuses, "burn", seeds[u.id]) }
+      : u,
+  );
+  return { ...state, units };
 }
 
 // Apply a unit transform to the chosen target, then prune any unit it killed. A

@@ -4,6 +4,15 @@
 
 export type Side = "player" | "enemy";
 
+// The named statuses a unit can carry. Distinct from the unit's stat fields
+// (hp/atk/blk): statuses are stackable, strippable, and reset between
+// encounters, whereas direct stat mutations are permanent for the combat.
+export type StatusName = "burn" | "tremors" | "twinkletoes" | "potential";
+
+// A unit's live statuses as name -> stack count. A name absent from the bag has
+// zero stacks; a present name always has a positive count.
+export type StatusBag = Partial<Record<StatusName, number>>;
+
 export interface Unit {
   id: string;
   name: string;
@@ -14,6 +23,8 @@ export interface Unit {
   atk: number;
   /** Flat reduction applied per incoming damage instance; may be negative. */
   blk: number;
+  /** Stackable buffs/debuffs; resets between encounters. */
+  statuses: StatusBag;
 }
 
 // Reduce a unit's hp by one damage instance. Block is subtracted per instance
