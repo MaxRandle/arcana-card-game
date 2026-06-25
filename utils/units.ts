@@ -2,6 +2,10 @@
 // its own module so `effects` can transform units without importing `combat`
 // (which would be a cycle). Pure: every function returns a new Unit.
 
+import { triggerHpLossPassives } from "./passives";
+import type { PassiveName } from "./passives";
+import type { EnemyAction } from "./enemies";
+
 export type Side = "player" | "enemy";
 
 // The named statuses a unit can carry. Distinct from the unit's stat fields
@@ -25,6 +29,12 @@ export interface Unit {
   blk: number;
   /** Stackable buffs/debuffs; resets between encounters. */
   statuses: StatusBag;
+  /** Always-on abilities that trigger on events (e.g. Rage). Enemies only. */
+  passives?: PassiveName[];
+  /** Fixed, ordered, looping action cycle performed on the Action phase. */
+  actionCycle?: EnemyAction[];
+  /** Index of the next action in `actionCycle`; wraps after the last step. */
+  cycleIndex?: number;
 }
 
 // Reduce a unit's hp by one damage instance. Block is subtracted per instance
@@ -32,5 +42,7 @@ export interface Unit {
 // never drops below 0.
 export function applyDamage(unit: Unit, amount: number): Unit {
   const net = Math.max(0, amount - unit.blk);
-  return { ...unit, hp: Math.max(0, unit.hp - net) };
+  if (net <= 0) return unit;
+  const damaged = { ...unit, hp: Math.max(0, unit.hp - net) };
+  return triggerHpLossPassives(damaged);
 }

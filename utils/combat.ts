@@ -12,6 +12,7 @@ import {
   resolveTremorsRetaliation,
   rollEvade,
 } from "./statuses";
+import { resolveActionPhase } from "./enemies";
 
 // Re-exported so existing combat consumers keep importing unit primitives from
 // here; their canonical home is `./units`.
@@ -121,8 +122,9 @@ export function playCard(
 }
 
 // End the Play phase: resolve the player's Attack phase, then the enemy turn
-// (Effect → Attack → Action; only Attack does work here), then hand control
-// back to the player. A no-op once combat is already decided.
+// (Effect → Attack → Action), then hand control back to the player. The enemy
+// attacks with its current stats BEFORE its Action resolves, so a stance change
+// only affects its next turn. A no-op once combat is already decided.
 export function endTurn(
   state: CombatState,
   rng: Rng = Math.random,
@@ -141,6 +143,12 @@ export function endTurn(
   }
 
   units = resolveAttacks(units, "enemy", rng);
+  if (outcomeOf(units) !== "ongoing") {
+    return { ...state, units, turn: "enemy", outcome: outcomeOf(units) };
+  }
+
+  // Enemy Action phase: each enemy steps its action cycle (stances, tithe).
+  units = resolveActionPhase(units);
   if (outcomeOf(units) !== "ongoing") {
     return { ...state, units, turn: "enemy", outcome: outcomeOf(units) };
   }

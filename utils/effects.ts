@@ -6,6 +6,7 @@
 
 import { DeckState, Rng, draw } from "./deck";
 import { StatusName, Unit, applyDamage } from "./units";
+import { triggerHpLossPassives } from "./passives";
 import {
   addStatus,
   removeAllDebuffs,
@@ -77,10 +78,11 @@ export function resolveEffect(
     case "damage":
       return mapTarget(state, ctx, (u) => applyDamage(u, effect.amount));
     case "loseHp":
-      return mapTarget(state, ctx, (u) => ({
-        ...u,
-        hp: Math.max(0, u.hp - effect.amount),
-      }));
+      return mapTarget(state, ctx, (u) =>
+        effect.amount > 0
+          ? triggerHpLossPassives({ ...u, hp: Math.max(0, u.hp - effect.amount) })
+          : u,
+      );
     case "heal":
       return mapTarget(state, ctx, (u) => ({
         ...u,

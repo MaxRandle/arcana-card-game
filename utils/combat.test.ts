@@ -229,6 +229,52 @@ describe("endTurn", () => {
   });
 });
 
+describe("enemy action phase in the turn loop", () => {
+  it("resolves the enemy's action after its attack, so the stat change hits next turn", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 1, hp: 100 });
+    // Battle stance step: gains 3 atk. The enemy attacks with its current atk
+    // (1) this turn; the stance only raises it for the following turn.
+    const enemy = unit({
+      id: "knight",
+      side: "enemy",
+      hp: 100,
+      atk: 1,
+      actionCycle: ["battleStance"],
+      cycleIndex: 0,
+    });
+
+    const afterFirst = endTurn(createCombat(arcanist, [enemy]));
+    // Attacked with 1 before the stance resolved.
+    expect(afterFirst.units.find((u) => u.id === "arcanist")!.hp).toBe(99);
+    // Stance applied for next turn: atk 1 -> 4, blk 0 -> -3, cycle wrapped.
+    const stanced = afterFirst.units.find((u) => u.id === "knight")!;
+    expect(stanced.atk).toBe(4);
+    expect(stanced.cycleIndex).toBe(0);
+
+    // Next turn the raised attack lands.
+    const afterSecond = endTurn(afterFirst);
+    expect(afterSecond.units.find((u) => u.id === "arcanist")!.hp).toBe(95); // 99 - 4
+  });
+
+  it("Barbarian's Blood tithe drains its hp and Rage raises its attack each turn", () => {
+    const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });
+    const barbarian = unit({
+      id: "barb",
+      side: "enemy",
+      hp: 60,
+      atk: 1,
+      passives: ["rage"],
+      actionCycle: ["bloodTithe"],
+      cycleIndex: 0,
+    });
+
+    const next = endTurn(createCombat(arcanist, [barbarian]));
+    const after = next.units.find((u) => u.id === "barb")!;
+    expect(after.hp).toBe(59); // Blood tithe
+    expect(after.atk).toBe(2); // Rage from its own hp loss
+  });
+});
+
 describe("statuses in the turn loop", () => {
   it("burns enemies on the enemy Effect phase", () => {
     const arcanist = unit({ id: "arcanist", side: "player", atk: 0, hp: 100 });

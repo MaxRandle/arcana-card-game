@@ -10,6 +10,7 @@ import Image from "next/image";
 import { CombatState, Unit, endTurn, playCard } from "@/utils/combat";
 import { CardInstance, Rng } from "@/utils/deck";
 import { statusList } from "@/utils/statuses";
+import { passiveList } from "@/utils/passives";
 import { CardView } from "@/ui/CardView";
 import { UnitStateView } from "@/ui/UnitStateView";
 import { DeckView } from "./DeckView";
@@ -304,7 +305,7 @@ function UnitView({
         maxHp={unit.maxHp}
         atk={unit.atk}
         blk={unit.blk}
-        statuses={statusList(unit.statuses)}
+        statuses={[...passiveList(unit.passives), ...statusList(unit.statuses)]}
       />
     </div>
   );
