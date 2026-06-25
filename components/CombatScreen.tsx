@@ -286,7 +286,7 @@ function UnitView({
         e.stopPropagation();
         onDrop(unit);
       }}
-      className="flex flex-col items-center gap-2"
+      className="relative flex flex-col items-center"
     >
       <Image
         src={sprite}
@@ -295,8 +295,11 @@ function UnitView({
         height={300}
         className="h-auto w-40 drop-shadow-xl md:w-52"
       />
+      {/* Pulled out of flow so the readout (whose height varies with the number
+          of status chips) never shifts the sprite's position on screen. */}
       <UnitStateView
         aria-label={`${unit.name} stats`}
+        className="absolute left-1/2 top-full -translate-x-1/2"
         hp={unit.hp}
         maxHp={unit.maxHp}
         atk={unit.atk}

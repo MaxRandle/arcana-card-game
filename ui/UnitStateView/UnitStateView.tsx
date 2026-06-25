@@ -40,7 +40,7 @@ export const UnitStateView = forwardRef<HTMLDivElement, UnitStateViewProps>(
         </div>
         <HealthBar value={hp} max={maxHp} tone={tone} />
         {statuses.length > 0 && (
-          <StatusBar>
+          <StatusBar className="w-full justify-start">
             {statuses.map((status, i) => (
               <StatusIcon
                 key={`${status.kind}-${status.label ?? i}`}
