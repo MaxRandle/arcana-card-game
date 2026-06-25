@@ -10,6 +10,7 @@ import Image from "next/image";
 import { CombatState, Unit, endTurn, playCard } from "@/utils/combat";
 import { CardInstance, Rng } from "@/utils/deck";
 import { CardView } from "@/ui/CardView";
+import { UnitStateView } from "@/ui/UnitStateView";
 import { DeckView } from "./DeckView";
 import arcanistSprite from "@/assets/sprites/arcanist.png";
 import knightSprite from "@/assets/sprites/knight.png";
@@ -293,23 +294,13 @@ function UnitView({
         height={300}
         className="h-auto w-40 drop-shadow-xl md:w-52"
       />
-      <dl
+      <UnitStateView
         aria-label={`${unit.name} stats`}
-        className="grid grid-cols-3 gap-x-3 rounded-md bg-black/60 px-4 py-2 text-center text-white"
-      >
-        <Stat label="HP" value={unit.hp} />
-        <Stat label="ATK" value={unit.atk} />
-        <Stat label="BLK" value={unit.blk} />
-      </dl>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-white/60">{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{value}</dd>
+        hp={unit.hp}
+        maxHp={unit.maxHp}
+        atk={unit.atk}
+        blk={unit.blk}
+      />
     </div>
   );
 }
