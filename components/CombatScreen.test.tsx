@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CombatScreen } from "./CombatScreen";
 import { Unit, createCombat } from "@/utils/combat";
@@ -45,10 +45,10 @@ describe("CombatScreen", () => {
         onRetire={() => {}}
       />,
     );
-    expect(screen.getByLabelText("Arcanist stats")).toHaveTextContent(
-      /hp\s*100/i,
-    );
-    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/blk\s*2/i);
+    expect(screen.getByLabelText("Arcanist stats")).toHaveTextContent("100/100");
+    expect(
+      within(screen.getByLabelText("Knight stats")).getByLabelText("Block 2"),
+    ).toBeInTheDocument();
   });
 
   it("applies attacks when End turn is pressed", async () => {
@@ -62,7 +62,7 @@ describe("CombatScreen", () => {
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
-    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/hp\s*55/i);
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("55/60");
   });
 
   it("calls onWin when the last enemy dies", async () => {
@@ -152,7 +152,7 @@ describe("CombatScreen", () => {
     fireEvent.pointerDown(cardEl);
     fireEvent.pointerUp(screen.getByLabelText("Knight target"));
 
-    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/hp\s*7/i);
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("7/60");
     expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
   });
 
@@ -205,7 +205,7 @@ describe("CombatScreen", () => {
     fireEvent.pointerUp(screen.getByLabelText("Knight target"));
 
     // Unchanged: enemy unhurt and card still in hand.
-    expect(screen.getByLabelText("Knight stats")).toHaveTextContent(/hp\s*10/i);
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("10/60");
     expect(screen.getByLabelText("Hand")).toHaveTextContent("Windshear");
   });
 
