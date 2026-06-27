@@ -30,6 +30,14 @@ export const STATUS_LABEL: Record<StatusName, string> = {
   potential: "Potential",
 };
 
+// Rules text shown in the status tooltip, under the display name.
+export const STATUS_DESCRIPTION: Record<StatusName, string> = {
+  burn: "Takes 1 damage per stack at the start of its turn. Does not decay.",
+  tremors: "When attacked, deals 2 damage to the attacker. Loses 1 stack each turn.",
+  twinkletoes: "25% chance to evade each incoming attack.",
+  potential: "Some cards deal more damage for each stack.",
+};
+
 const EVADE_CHANCE = 0.25;
 const TREMORS_DAMAGE = 2;
 
@@ -38,6 +46,7 @@ const TREMORS_DAMAGE = 2;
 export interface StatusEntry {
   name: StatusName;
   label: string;
+  description: string;
   kind: StatusKind;
   stacks: number;
 }
@@ -50,6 +59,7 @@ export function statusList(bag: StatusBag): StatusEntry[] {
     .map((name) => ({
       name,
       label: STATUS_LABEL[name],
+      description: STATUS_DESCRIPTION[name],
       kind: STATUS_KIND[name],
       stacks: statusStacks(bag, name),
     }));

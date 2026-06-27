@@ -211,4 +211,4 @@ When targeting a unit with a card, the player clicks on a card and drags the cur
 
 **Untargeted cards**:
 
-When playing a card with no target the player drags the card onto the battlefield. The card visibly floats above the hand but no targeting arrow is drawn.
+When playing a card with no target the player drags the card onto the battlefield. The card is only played if it outside the hand region when it is "dropped". The card visibly floats above the hand to indicate that it will be played if dropped in the current spot, but no targeting arrow is drawn. Note that since there is only one player character, "Player units" targeted cards are played the same way as untargeted cards.

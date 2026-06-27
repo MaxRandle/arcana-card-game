@@ -95,21 +95,27 @@ export function CombatScreen({
     cancelDrag();
   }
 
-  // Releasing an untargeted card anywhere on the battlefield plays it (no unit,
-  // no arrow). Targeted cards ignore a battlefield drop — they need a unit.
+  // Releasing a card that needs no chosen unit anywhere on the battlefield plays
+  // it (no arrow). Untargeted cards resolve with no unit; "player" cards always
+  // resolve on the lone arcanist. Cards that need a unit ignore a battlefield
+  // drop — they require an explicit target.
   function dropOnBattlefield() {
-    if (dragging === null || heldTargeted) return;
-    setState((s) => playCard(s, dragging, null, rng));
+    if (dragging === null || heldNeedsUnit) return;
+    const targetId =
+      heldCard?.card.targeting === "player" ? (arcanist?.id ?? null) : null;
+    setState((s) => playCard(s, dragging, targetId, rng));
     cancelDrag();
   }
 
   const heldCard = dragging
     ? state.deck.hand.find((c) => c.instanceId === dragging)
     : undefined;
-  // Targeted cards stay lifted in the hand and draw an arrow to the cursor;
-  // untargeted cards float above the hand following the cursor (no arrow).
-  const heldTargeted = heldCard
-    ? heldCard.card.targeting !== "untargeted"
+  // Cards that need the player to pick a unit (enemy / any) stay lifted in the
+  // hand and draw an arrow to the cursor. Untargeted and "player" cards need no
+  // choice — with one arcanist, a player card has a single implicit target — so
+  // they float above the hand following the cursor (no arrow).
+  const heldNeedsUnit = heldCard
+    ? heldCard.card.targeting === "enemy" || heldCard.card.targeting === "any"
     : false;
 
   return (
@@ -183,7 +189,7 @@ export function CombatScreen({
         cards={state.deck.hand}
         costOf={(c) => effectiveCost(c.card, c.instanceId, state.modifiers)}
         dragging={dragging}
-        draggingTargeted={heldTargeted}
+        draggingTargeted={heldNeedsUnit}
         onGrab={startDrag}
       />
 
@@ -198,7 +204,7 @@ export function CombatScreen({
 
       {/* Targeted: the card stays lifted in the hand; only an arrow follows the
           cursor. Untargeted: the card floats above the hand, no arrow. */}
-      {heldCard && pointer && heldTargeted && origin && (
+      {heldCard && pointer && heldNeedsUnit && origin && (
         <svg className="pointer-events-none fixed inset-0 z-40 h-full w-full">
           <line
             x1={origin.x}
@@ -211,7 +217,7 @@ export function CombatScreen({
           />
         </svg>
       )}
-      {heldCard && pointer && !heldTargeted && (
+      {heldCard && pointer && !heldNeedsUnit && (
         <div
           className="pointer-events-none fixed z-50 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
           style={{ left: pointer.x, top: pointer.y }}
@@ -241,9 +247,12 @@ function Hand({
   onGrab: (instanceId: string, e: React.PointerEvent) => void;
 }) {
   return (
+    // Captures pointer events so a card released over the hand region drops back
+    // into it (the release never reaches the battlefield's play zone behind it),
+    // letting the player pick a card up and put it down without playing it.
     <ul
       aria-label="Hand"
-      className="pointer-events-none absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 justify-center"
+      className="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 justify-center"
     >
       {cards.map((c, i) => {
         const offset = i - (cards.length - 1) / 2;

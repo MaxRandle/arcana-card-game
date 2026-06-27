@@ -44,7 +44,7 @@ Do not make edits to any files located in the `design` folder, these are for hum
 
 ## User communication preferences
 
-Sacrifice grammar for concision.
+When reporting information to the user, be extremely concise and sacrifice grammar for the sake of concision.
 
 ## Working with the user
 

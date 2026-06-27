@@ -1,5 +1,6 @@
 import { Side, Unit } from "./units";
 import {
+  STATUS_DESCRIPTION,
   STATUS_KIND,
   addStatus,
   decayStatus,
@@ -77,8 +78,20 @@ describe("bag operations", () => {
 describe("statusList", () => {
   it("flattens the bag into labelled, categorised entries", () => {
     expect(statusList({ burn: 2, tremors: 1 })).toEqual([
-      { name: "burn", label: "Burn", kind: "debuff", stacks: 2 },
-      { name: "tremors", label: "Tremors", kind: "buff", stacks: 1 },
+      {
+        name: "burn",
+        label: "Burn",
+        description: STATUS_DESCRIPTION.burn,
+        kind: "debuff",
+        stacks: 2,
+      },
+      {
+        name: "tremors",
+        label: "Tremors",
+        description: STATUS_DESCRIPTION.tremors,
+        kind: "buff",
+        stacks: 1,
+      },
     ]);
   });
 

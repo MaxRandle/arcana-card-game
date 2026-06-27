@@ -9,6 +9,7 @@ import { tv } from "tailwind-variants";
 import { HealthBar } from "@/ui/HealthBar";
 import { StatIndicator } from "@/ui/StatIndicator";
 import { StatusBar, StatusIcon, UnitStatus } from "@/ui/StatusIcon";
+import { Tooltip } from "@/ui/Tooltip";
 
 const UnitStateViewStyles = tv({
   base: "flex w-44 flex-col items-center gap-1",
@@ -41,14 +42,33 @@ export const UnitStateView = forwardRef<HTMLDivElement, UnitStateViewProps>(
         <HealthBar value={hp} max={maxHp} tone={tone} />
         {statuses.length > 0 && (
           <StatusBar className="w-full justify-start">
-            {statuses.map((status, i) => (
-              <StatusIcon
-                key={`${status.kind}-${status.label ?? i}`}
-                kind={status.kind}
-                stacks={status.stacks}
-                label={status.label}
-              />
-            ))}
+            {statuses.map((status, i) => {
+              const key = `${status.kind}-${status.label ?? i}`;
+              const icon = (
+                <StatusIcon
+                  kind={status.kind}
+                  stacks={status.stacks}
+                  label={status.label}
+                />
+              );
+              // Hovering a passive/buff/debuff reveals its name and rules text.
+              return status.label ? (
+                <Tooltip
+                  key={key}
+                  label={status.label}
+                  description={status.description}
+                >
+                  {icon}
+                </Tooltip>
+              ) : (
+                <StatusIcon
+                  key={key}
+                  kind={status.kind}
+                  stacks={status.stacks}
+                  label={status.label}
+                />
+              );
+            })}
           </StatusBar>
         )}
       </div>

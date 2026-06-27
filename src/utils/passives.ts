@@ -13,11 +13,17 @@ export const PASSIVE_LABEL: Record<PassiveName, string> = {
   rage: "Rage",
 };
 
+// Rules text shown in the passive tooltip, under the display name.
+export const PASSIVE_DESCRIPTION: Record<PassiveName, string> = {
+  rage: "Gains 1 attack each time it loses hp.",
+};
+
 // A passive flattened for the always-on unit readout: its display label and a
 // fixed "passive" category (the grey chip). The view maps this onto its chip.
 export interface PassiveEntry {
   name: PassiveName;
   label: string;
+  description: string;
   kind: "passive";
 }
 
@@ -26,6 +32,7 @@ export function passiveList(passives: PassiveName[] = []): PassiveEntry[] {
   return passives.map((name) => ({
     name,
     label: PASSIVE_LABEL[name],
+    description: PASSIVE_DESCRIPTION[name],
     kind: "passive",
   }));
 }

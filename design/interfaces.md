@@ -55,4 +55,14 @@ This displays under the unit sprite and tracks:
 
 Attack and Block are displayed as numerical values inside large indicators above the health bar. Attack is a red circular spiked shape, Block is a blue shield shape.
 
-Passive abilities, buffs, & debuffs are displayed in the status bar below the hp bar. The status bar is a row of left-aligned icons that wraps around to the next row if there are too many. Passives are displayed as a grey square shape with enough room inside for a small icon which will be added later, buffs are the same but a green triangle pointing up, debuffs are a red triangle pointing down. Buffs and debuffs have a small stack counter floating at the top right corner of the icon.
+Passive abilities, buffs, & debuffs are displayed in the status bar below the hp bar. The status bar is a row of left-aligned icons that wraps around to the next row if there are too many. Passives are displayed as a grey square shape with enough room inside for a small icon which will be added later, buffs are the same but a green triangle pointing up, debuffs are a red triangle pointing down. Buffs and debuffs display the number of stacks as a small counter floating at the top right corner of the icon.
+
+## Tooltips
+
+Hovering over the following interface elements displays a tooltip anchored to the element:
+
+- Passive abilities
+- Buffs
+- Debuffs
+
+The tooltip should display the effect name and description. The tooltip is positioned with it's top-left corner anchored to the icon by default, or the top-right corner if the tooltip would clip off the screen.

@@ -181,6 +181,59 @@ describe("CombatScreen", () => {
     expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
   });
 
+  it("plays a player-targeted card dragged onto the battlefield (single arcanist)", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist({ blk: 0 }),
+          [enemy()],
+          // endurance is player-targeted: "Ramp 1; gain 1 block". With one
+          // player character it is played like an untargeted card.
+          toInstances(["endurance", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play endurance/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Battlefield"));
+
+    // The card resolved on the arcanist (gained block) and spent its mana.
+    expect(
+      within(screen.getByLabelText("Arcanist stats")).getByLabelText("Block 1"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Hand")).not.toHaveTextContent("Endurance");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("1");
+  });
+
+  it("does not play an untargeted card released back onto the hand", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["mental-energy", "windshear", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play mental energy/i);
+    fireEvent.pointerDown(cardEl);
+    // Released over the hand region, not the battlefield — so it is not played.
+    fireEvent.pointerUp(screen.getByLabelText("Hand"));
+
+    expect(screen.getByLabelText("Hand")).toHaveTextContent("Mental energy");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("3");
+  });
+
   it("does not play a card the player cannot afford", () => {
     render(
       <CombatScreen

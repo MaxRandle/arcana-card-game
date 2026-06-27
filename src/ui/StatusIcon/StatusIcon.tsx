@@ -14,6 +14,8 @@ export interface UnitStatus {
   kind: StatusKind;
   /** Accessible name, e.g. "Poison". */
   label?: string;
+  /** Rules text shown in the status's tooltip, under its name. */
+  description?: string;
   /** Stack count shown in the corner badge (buffs/debuffs). */
   stacks?: number;
 }
