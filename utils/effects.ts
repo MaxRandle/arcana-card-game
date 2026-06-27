@@ -8,6 +8,11 @@ import { DeckState, Rng, draw } from "./deck";
 import { StatusName, Unit, applyDamage } from "./units";
 import { triggerHpLossPassives } from "./passives";
 import {
+  CombatModifiers,
+  gainElementalDamage,
+  gainManaPerTurn,
+} from "./modifiers";
+import {
   addStatus,
   removeAllDebuffs,
   removeRandomBuff,
@@ -20,6 +25,8 @@ export interface EffectState {
   units: Unit[];
   mana: number;
   deck: DeckState;
+  /** Per-combat cost and ongoing modifiers (ramp, mana/turn, elemental dmg). */
+  modifiers: CombatModifiers;
 }
 
 // The target chosen when the card was played: a unit id, or null for an
@@ -55,7 +62,12 @@ export type Effect =
   // status in place (Humble guide reads Potential without consuming it).
   | { kind: "damagePerStatus"; status: StatusName; perStack: number }
   // Conflagration: each burning enemy seeds 1 burn onto another random enemy.
-  | { kind: "seedBurn" };
+  | { kind: "seedBurn" }
+  // Temporal energy: gain N additional mana on every Mana phase this combat.
+  | { kind: "gainManaPerTurn"; amount: number }
+  // Spirit energy: raise the elemental damage dealt. `permanent` survives the
+  // combat-end reset and persists for the run (the Permanent keyword).
+  | { kind: "gainElementalDamage"; amount: number; permanent: boolean };
 
 export function resolveEffects(
   state: EffectState,
@@ -76,7 +88,9 @@ export function resolveEffect(
 ): EffectState {
   switch (effect.kind) {
     case "damage":
-      return mapTarget(state, ctx, (u) => applyDamage(u, effect.amount));
+      return mapTarget(state, ctx, (u) =>
+        applyDamage(u, withElementalBonus(effect.amount, state)),
+      );
     case "loseHp":
       return mapTarget(state, ctx, (u) =>
         effect.amount > 0
@@ -99,7 +113,12 @@ export function resolveEffect(
     case "drawPerArcana":
       return { ...state, deck: draw(state.deck, distinctArcana(state.deck), rng) };
     case "splash":
-      return resolveSplash(state, ctx, effect.target, effect.others);
+      return resolveSplash(
+        state,
+        ctx,
+        withElementalBonus(effect.target, state),
+        withElementalBonus(effect.others, state),
+      );
     case "either": {
       const target = state.units.find((u) => u.id === ctx.targetId);
       if (!target) return state; // target gone — fizzle silently
@@ -122,12 +141,31 @@ export function resolveEffect(
         statuses: removeAllDebuffs(u.statuses),
       }));
     case "damagePerStatus":
-      return mapTarget(state, ctx, (u) =>
-        applyDamage(u, statusStacks(u.statuses, effect.status) * effect.perStack),
-      );
+      return mapTarget(state, ctx, (u) => {
+        const base = statusStacks(u.statuses, effect.status) * effect.perStack;
+        // No stacks means the card deals no damage — the elemental bonus has
+        // nothing to amplify, so it never conjures damage from nothing.
+        return base > 0 ? applyDamage(u, withElementalBonus(base, state)) : u;
+      });
     case "seedBurn":
       return resolveSeedBurn(state, rng);
+    case "gainManaPerTurn":
+      return { ...state, modifiers: gainManaPerTurn(state.modifiers, effect.amount) };
+    case "gainElementalDamage":
+      return {
+        ...state,
+        modifiers: gainElementalDamage(
+          state.modifiers,
+          effect.amount,
+          effect.permanent,
+        ),
+      };
   }
+}
+
+// Add the combat's elemental-damage bonus to a positive damage amount.
+function withElementalBonus(amount: number, state: EffectState): number {
+  return amount + state.modifiers.elementalDamage;
 }
 
 // Conflagration. Snapshots the burning enemies at cast, then each seeds 1 burn

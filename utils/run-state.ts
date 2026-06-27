@@ -2,7 +2,7 @@
 // hangs off (see ADR-0001). Keep this shape small and stable: it is the
 // contract the later progression slice writes to. No UI concerns here.
 
-export const RUN_STATE_VERSION = 1;
+export const RUN_STATE_VERSION = 2;
 export const STARTING_HP = 100;
 
 export type RunPhase = "between-encounters" | "between-levels";
@@ -20,6 +20,11 @@ export interface RunState {
   encounter: number;
   /** Where the player sits between fights. */
   phase: RunPhase;
+  /**
+   * Running total of Permanent elemental-damage bonuses earned this run. Seeded
+   * back into each combat so Permanent effects persist across encounters.
+   */
+  permanentElementalDamage: number;
 }
 
 export function createRun(): RunState {
@@ -30,6 +35,7 @@ export function createRun(): RunState {
     level: 1,
     encounter: 1,
     phase: "between-encounters",
+    permanentElementalDamage: 0,
   };
 }
 
@@ -49,8 +55,17 @@ export function deserializeRun(raw: string): RunState | null {
     return null;
   }
   if (!isVersionedRun(parsed)) return null;
-  const { deck, hp, maxHp, level, encounter, phase } = parsed;
-  return { deck, hp, maxHp, level, encounter, phase };
+  const { deck, hp, maxHp, level, encounter, phase, permanentElementalDamage } =
+    parsed;
+  return {
+    deck,
+    hp,
+    maxHp,
+    level,
+    encounter,
+    phase,
+    permanentElementalDamage,
+  };
 }
 
 type VersionedRun = RunState & { version: number };
@@ -66,6 +81,7 @@ function isVersionedRun(value: unknown): value is VersionedRun {
     typeof v.maxHp === "number" &&
     typeof v.level === "number" &&
     typeof v.encounter === "number" &&
-    (v.phase === "between-encounters" || v.phase === "between-levels")
+    (v.phase === "between-encounters" || v.phase === "between-levels") &&
+    typeof v.permanentElementalDamage === "number"
   );
 }

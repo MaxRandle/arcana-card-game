@@ -329,3 +329,150 @@ describe("statuses in the turn loop", () => {
     expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(95);
   });
 });
+
+describe("card cost modifiers", () => {
+  const endurance: Card = {
+    cardId: "endurance",
+    title: "Endurance",
+    cost: 2,
+    body: "Ramp 1; gain 1 block.",
+    arcana: "earth",
+    targeting: "player",
+    ramp: 1,
+    effects: [{ kind: "gainBlock", amount: 1 }],
+  };
+
+  function withHand(cards: CardInstance[], mana = 10): CombatState {
+    const base = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy" })],
+      [],
+      noShuffle,
+    );
+    return {
+      ...base,
+      mana,
+      deck: { ...base.deck, hand: cards },
+    };
+  }
+
+  it("raises a ramped card's cost by x on each play", () => {
+    const state = withHand([{ instanceId: "e0", card: endurance }], 10);
+    const after = playCard(state, "e0", "arcanist", noShuffle);
+    // First play charges the base cost of 2.
+    expect(after.mana).toBe(8);
+    expect(after.modifiers.ramp).toEqual({ e0: 1 });
+  });
+
+  it("charges the ramped cost on the second play of the same copy", () => {
+    let state = withHand(
+      [
+        { instanceId: "e0", card: endurance },
+        { instanceId: "e0b", card: endurance },
+      ],
+      10,
+    );
+    // Replay the same instance by re-adding it to hand after the first play.
+    state = playCard(state, "e0", "arcanist", noShuffle);
+    state = { ...state, deck: { ...state.deck, hand: [{ instanceId: "e0", card: endurance }] } };
+    const after = playCard(state, "e0", "arcanist", noShuffle);
+    // Second play of e0 costs 2 + 1 = 3.
+    expect(after.mana).toBe(8 - 3);
+  });
+
+  it("ramps duplicates independently", () => {
+    let state = withHand(
+      [
+        { instanceId: "e0", card: endurance },
+        { instanceId: "e1", card: endurance },
+      ],
+      10,
+    );
+    state = playCard(state, "e0", "arcanist", noShuffle);
+    const after = playCard(state, "e1", "arcanist", noShuffle);
+    expect(after.modifiers.ramp).toEqual({ e0: 1, e1: 1 });
+  });
+
+  it("blocks a play it cannot pay for once ramped past the mana on hand", () => {
+    let state = withHand([{ instanceId: "e0", card: endurance }], 2);
+    state = playCard(state, "e0", "arcanist", noShuffle); // mana now 0
+    state = { ...state, mana: 2, deck: { ...state.deck, hand: [{ instanceId: "e0", card: endurance }] } };
+    // Effective cost is now 3 > 2 mana: the play is blocked (state unchanged).
+    expect(playCard(state, "e0", "arcanist", noShuffle)).toBe(state);
+  });
+});
+
+describe("additional mana per turn", () => {
+  const temporal: Card = {
+    cardId: "temporal",
+    title: "Temporal energy",
+    cost: 0,
+    body: "Gain 1 additional mana per turn.",
+    arcana: "water",
+    targeting: "untargeted",
+    effects: [{ kind: "gainManaPerTurn", amount: 1 }],
+  };
+
+  it("stacks into every later Mana phase", () => {
+    const base = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy", hp: 100 })],
+      [],
+      noShuffle,
+    );
+    let state: CombatState = { ...base, mana: 5, deck: { ...base.deck, hand: [{ instanceId: "t0", card: temporal }] } };
+    state = playCard(state, "t0", null, noShuffle);
+    const manaBefore = state.mana;
+    state = endTurn(state, noShuffle);
+    // Next turn's Mana phase gives the usual 2 plus the 1 additional.
+    expect(state.mana).toBe(manaBefore + 3);
+  });
+});
+
+describe("elemental damage bonus", () => {
+  const spirit: Card = {
+    cardId: "spirit",
+    title: "Spirit energy",
+    cost: 0,
+    body: "Increase elemental damage by 1.",
+    arcana: "air",
+    targeting: "player",
+    effects: [{ kind: "gainElementalDamage", amount: 1, permanent: true }],
+  };
+
+  it("adds to damage cards and tracks the permanent total for the checkpoint", () => {
+    const base = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy", hp: 20 })],
+      [],
+      noShuffle,
+    );
+    let state: CombatState = {
+      ...base,
+      mana: 10,
+      deck: {
+        ...base.deck,
+        hand: [
+          { instanceId: "s0", card: spirit },
+          { instanceId: "w0", card: windshear },
+        ],
+      },
+    };
+    state = playCard(state, "s0", "arcanist", noShuffle);
+    expect(state.modifiers.permanentElementalDamage).toBe(1);
+    state = playCard(state, "w0", "knight", noShuffle);
+    // Windshear's 3 damage becomes 4 with the +1 elemental bonus.
+    expect(state.units.find((u) => u.id === "knight")!.hp).toBe(16);
+  });
+
+  it("seeds the bonus from the run's permanent total", () => {
+    const state = createCombat(
+      unit({ id: "arcanist", side: "player" }),
+      [unit({ id: "knight", side: "enemy" })],
+      [],
+      noShuffle,
+      2,
+    );
+    expect(state.modifiers.elementalDamage).toBe(2);
+  });
+});

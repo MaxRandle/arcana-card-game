@@ -64,17 +64,20 @@ export type CardViewProps = Omit<
 > & {
   /** The card to render. Its `arcana` drives the palette. */
   card: Card;
+  /** Cost shown in the pip; defaults to the card's base cost. Lets the combat
+   *  screen show a ramped card's current effective cost. */
+  cost?: number;
 };
 
 export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
-  ({ card, className, ...props }, ref) => {
+  ({ card, cost, className, ...props }, ref) => {
     const { root, pip, splash } = CardViewStyles({
       arcana: card.arcana as Arcana,
     });
 
     return (
       <div ref={ref} className={root({ className })} {...props}>
-        <span className={pip()}>{card.cost}</span>
+        <span className={pip()}>{cost ?? card.cost}</span>
         <div className="px-2 pt-2">
           <h3 className="text-center text-sm font-semibold">{card.title}</h3>
         </div>

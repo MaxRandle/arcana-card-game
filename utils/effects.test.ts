@@ -2,6 +2,7 @@ import { Effect, EffectState, resolveEffect, resolveEffects } from "./effects";
 import { CardInstance, DeckState } from "./deck";
 import { Unit } from "./units";
 import { Card } from "./cards";
+import { createModifiers } from "./modifiers";
 
 const noShuffle = () => 0.999999;
 
@@ -45,6 +46,7 @@ function state(overrides: Partial<EffectState> = {}): EffectState {
     ],
     mana: 0,
     deck: emptyDeck(),
+    modifiers: createModifiers(),
     ...overrides,
   };
 }
@@ -317,5 +319,61 @@ describe("resolveEffects", () => {
     );
     expect(next.units.find((u) => u.id === "arcanist")!.hp).toBe(9);
     expect(next.mana).toBe(1);
+  });
+});
+
+describe("gainManaPerTurn", () => {
+  it("stacks the per-turn mana bonus into the modifiers", () => {
+    const s = state({ modifiers: { ...createModifiers(), manaPerTurn: 1 } });
+    const next = resolveEffect(s, { kind: "gainManaPerTurn", amount: 1 }, { targetId: null }, noShuffle);
+    expect(next.modifiers.manaPerTurn).toBe(2);
+  });
+});
+
+describe("gainElementalDamage", () => {
+  it("raises the elemental-damage bonus, marking a permanent gain as persisted", () => {
+    const next = resolveEffect(state(), { kind: "gainElementalDamage", amount: 1, permanent: true }, { targetId: null }, noShuffle);
+    expect(next.modifiers.elementalDamage).toBe(1);
+    expect(next.modifiers.permanentElementalDamage).toBe(1);
+  });
+});
+
+describe("elemental-damage bonus", () => {
+  it("adds the bonus to a damage clause", () => {
+    const s = state({ modifiers: { ...createModifiers(), elementalDamage: 1 } });
+    const next = resolveEffect(s, { kind: "damage", amount: 3 }, { targetId: "knight" }, noShuffle);
+    expect(next.units.find((u) => u.id === "knight")!.hp).toBe(6); // 10 - (3 + 1)
+  });
+
+  it("adds the bonus to each leg of a splash", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "a", side: "enemy", hp: 10 }),
+        unit({ id: "b", side: "enemy", hp: 10 }),
+      ],
+      modifiers: { ...createModifiers(), elementalDamage: 1 },
+    });
+    const next = resolveEffect(s, { kind: "splash", target: 4, others: 2 }, { targetId: "a" }, noShuffle);
+    expect(next.units.find((u) => u.id === "a")!.hp).toBe(5); // 10 - (4 + 1)
+    expect(next.units.find((u) => u.id === "b")!.hp).toBe(7); // 10 - (2 + 1)
+  });
+
+  it("adds the bonus to damage-per-status when the status is present", () => {
+    const s = state({
+      units: [
+        unit({ id: "arcanist", side: "player" }),
+        unit({ id: "knight", side: "enemy", hp: 10, statuses: { potential: 2 } }),
+      ],
+      modifiers: { ...createModifiers(), elementalDamage: 1 },
+    });
+    const next = resolveEffect(s, { kind: "damagePerStatus", status: "potential", perStack: 1 }, { targetId: "knight" }, noShuffle);
+    expect(next.units.find((u) => u.id === "knight")!.hp).toBe(7); // 10 - (2 + 1)
+  });
+
+  it("does not conjure damage from a damage-per-status clause with no stacks", () => {
+    const s = state({ modifiers: { ...createModifiers(), elementalDamage: 1 } });
+    const next = resolveEffect(s, { kind: "damagePerStatus", status: "potential", perStack: 1 }, { targetId: "knight" }, noShuffle);
+    expect(next.units.find((u) => u.id === "knight")!.hp).toBe(10);
   });
 });

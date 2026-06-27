@@ -8,6 +8,12 @@ import { TargetingMode } from "./cards";
 import { Side, Unit, applyDamage } from "./units";
 import { resolveEffects } from "./effects";
 import {
+  CombatModifiers,
+  applyRamp,
+  createModifiers,
+  effectiveCost,
+} from "./modifiers";
+import {
   resolveStatusEffectPhase,
   resolveTremorsRetaliation,
   rollEvade,
@@ -33,6 +39,8 @@ export interface CombatState {
   /** Arcanist mana available in the Play phase. Carries across turns, no cap. */
   mana: number;
   deck: DeckState;
+  /** Per-combat cost and ongoing modifiers (ramp, mana/turn, elemental dmg). */
+  modifiers: CombatModifiers;
 }
 
 export function createCombat(
@@ -40,6 +48,9 @@ export function createCombat(
   enemies: Unit[],
   deckCards: CardInstance[] = [],
   rng: Rng = Math.random,
+  // The run's Permanent elemental-damage total, seeded back in so Permanent
+  // bonuses earned in earlier encounters still apply.
+  permanentElementalDamage = 0,
 ): CombatState {
   const base: CombatState = {
     units: [arcanist, ...enemies],
@@ -47,6 +58,7 @@ export function createCombat(
     outcome: "ongoing",
     mana: MANA_START,
     deck: createDeckState(deckCards, rng),
+    modifiers: createModifiers(permanentElementalDamage),
   };
   // Turn 1 has no statuses to tick (they reset to empty between encounters), so
   // its opening skips the Effect phase and runs only Mana → Draw.
@@ -70,7 +82,7 @@ function manaAndDraw(state: CombatState, rng: Rng): CombatState {
   return {
     ...state,
     turn: "player",
-    mana: state.mana + MANA_PER_TURN,
+    mana: state.mana + MANA_PER_TURN + state.modifiers.manaPerTurn,
     deck: draw(state.deck, DRAW_PER_TURN, rng),
   };
 }
@@ -89,7 +101,9 @@ export function playCard(
   if (state.outcome !== "ongoing") return state;
 
   const played = state.deck.hand.find((c) => c.instanceId === instanceId);
-  if (!played || state.mana < played.card.cost) return state;
+  if (!played) return state;
+  const cost = effectiveCost(played.card, instanceId, state.modifiers);
+  if (state.mana < cost) return state;
   if (!isLegalTarget(played.card.targeting, targetId, state.units)) return state;
 
   const deckInPlay: DeckState = {
@@ -99,7 +113,12 @@ export function playCard(
   };
 
   const resolved = resolveEffects(
-    { units: state.units, mana: state.mana, deck: deckInPlay },
+    {
+      units: state.units,
+      mana: state.mana,
+      deck: deckInPlay,
+      modifiers: state.modifiers,
+    },
     played.card.effects,
     { targetId },
     rng,
@@ -116,7 +135,9 @@ export function playCard(
     ...state,
     units: resolved.units,
     deck,
-    mana: resolved.mana - played.card.cost,
+    mana: resolved.mana - cost,
+    // Ramp this instance after the play, so the next play of this copy costs more.
+    modifiers: applyRamp(resolved.modifiers, played.card, instanceId),
     outcome: outcomeOf(resolved.units),
   };
 }

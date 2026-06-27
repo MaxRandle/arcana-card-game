@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CombatScreen } from "@/components/CombatScreen";
 import { usePersistedRun } from "@/components/use-persisted-run";
-import { clearRun } from "@/utils/run-storage";
+import { clearRun, saveRun } from "@/utils/run-storage";
 import { Unit, createCombat } from "@/utils/combat";
 import { makeFastKnight, makeBarbarian } from "@/utils/enemies";
 import { DEBUG_DECK, toInstances } from "@/utils/cards";
@@ -31,14 +31,19 @@ export default function CombatPage() {
   const router = useRouter();
   const run = usePersistedRun();
 
+  // Seed the fight with the run's Permanent elemental-damage total so bonuses
+  // earned in earlier encounters still apply.
+  const permanentElementalDamage = run?.permanentElementalDamage ?? 0;
   const initialState = useMemo(
     () =>
       createCombat(
         makeArcanist(),
         [makeFastKnight("fast-knight"), makeBarbarian("barbarian")],
         toInstances(DEBUG_DECK),
+        Math.random,
+        permanentElementalDamage,
       ),
-    [],
+    [permanentElementalDamage],
   );
 
   // No run means nothing to fight in — head home.
@@ -52,7 +57,11 @@ export default function CombatPage() {
     <CombatScreen
       initialState={initialState}
       deck={run.deck}
-      onWin={() => router.replace("/adventure")}
+      onWin={(permanentElementalDamage) => {
+        // Persist any Permanent bonuses earned this fight to the checkpoint.
+        saveRun({ ...run, permanentElementalDamage });
+        router.replace("/adventure");
+      }}
       onLoss={() => {
         clearRun();
         router.replace("/");

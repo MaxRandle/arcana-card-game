@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CombatState, Unit, endTurn, playCard } from "@/utils/combat";
 import { CardInstance, Rng } from "@/utils/deck";
+import { effectiveCost } from "@/utils/modifiers";
 import { statusList } from "@/utils/statuses";
 import { passiveList } from "@/utils/passives";
 import { CardView } from "@/ui/CardView";
@@ -20,7 +21,9 @@ import knightSprite from "@/assets/sprites/knight.png";
 interface CombatScreenProps {
   initialState: CombatState;
   deck: string[];
-  onWin: () => void;
+  /** Receives the run's Permanent elemental-damage total at the win, so the
+   *  caller can persist it to the checkpoint. */
+  onWin: (permanentElementalDamage: number) => void;
   onLoss: () => void;
   /** Wipes the run and returns to Home (the menu's Retire action). */
   onRetire: () => void;
@@ -50,9 +53,9 @@ export function CombatScreen({
   const [origin, setOrigin] = useState<Pointer | null>(null);
 
   useEffect(() => {
-    if (state.outcome === "win") onWin();
+    if (state.outcome === "win") onWin(state.modifiers.permanentElementalDamage);
     else if (state.outcome === "loss") onLoss();
-  }, [state.outcome, onWin, onLoss]);
+  }, [state.outcome, state.modifiers.permanentElementalDamage, onWin, onLoss]);
 
   // While a card is held, track the cursor (for the arrow / floating card) and
   // cancel the drag if the player releases anywhere but a valid target.
@@ -178,6 +181,7 @@ export function CombatScreen({
 
       <Hand
         cards={state.deck.hand}
+        costOf={(c) => effectiveCost(c.card, c.instanceId, state.modifiers)}
         dragging={dragging}
         draggingTargeted={heldTargeted}
         onGrab={startDrag}
@@ -223,11 +227,14 @@ export function CombatScreen({
 
 function Hand({
   cards,
+  costOf,
   dragging,
   draggingTargeted,
   onGrab,
 }: {
   cards: CardInstance[];
+  /** The card's current effective cost (base plus any accumulated ramp). */
+  costOf: (card: CardInstance) => number;
   dragging: string | null;
   /** True when the held card is targeted (it stays lifted, not floated away). */
   draggingTargeted: boolean;
@@ -263,7 +270,7 @@ function Hand({
             }}
             className="pointer-events-auto -mx-6 h-44 w-32 origin-bottom cursor-grab transition-transform hover:-translate-y-4 active:cursor-grabbing"
           >
-            <CardView card={c.card} />
+            <CardView card={c.card} cost={costOf(c)} />
           </li>
         );
       })}

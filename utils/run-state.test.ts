@@ -24,6 +24,10 @@ describe("createRun", () => {
     expect(run.encounter).toBe(1);
     expect(run.phase).toBe("between-encounters");
   });
+
+  it("starts with no permanent elemental-damage bonus", () => {
+    expect(createRun().permanentElementalDamage).toBe(0);
+  });
 });
 
 describe("ctaLabel", () => {
@@ -57,6 +61,11 @@ describe("serializeRun / deserializeRun", () => {
   it("returns null for a mismatched version", () => {
     const payload = JSON.stringify({ version: RUN_STATE_VERSION + 1 });
     expect(deserializeRun(payload)).toBeNull();
+  });
+
+  it("carries the permanent elemental-damage total across a round-trip", () => {
+    const run = { ...createRun(), permanentElementalDamage: 3 };
+    expect(deserializeRun(serializeRun(run))!.permanentElementalDamage).toBe(3);
   });
 
   it("returns null when required fields are missing", () => {

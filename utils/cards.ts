@@ -27,6 +27,11 @@ export interface Card {
   body: string;
   arcana: Arcana;
   targeting: TargetingMode;
+  /**
+   * Ramp keyword: each play raises this card's effective cost by this many mana
+   * for the rest of combat (may be negative). Absent means the card never ramps.
+   */
+  ramp?: number;
   /** Clauses resolved strictly left-to-right when the card is played. */
   effects: Effect[];
 }
@@ -76,6 +81,35 @@ export const CARD_CATALOG: Record<string, Card> = {
     arcana: "fire",
     targeting: "untargeted",
     effects: [{ kind: "seedBurn" }],
+  },
+  endurance: {
+    cardId: "endurance",
+    title: "Endurance",
+    cost: 2,
+    body: "Ramp 1; gain 1 block.",
+    arcana: "earth",
+    targeting: "player",
+    ramp: 1,
+    effects: [{ kind: "gainBlock", amount: 1 }],
+  },
+  "temporal-energy": {
+    cardId: "temporal-energy",
+    title: "Temporal energy",
+    cost: 3,
+    body: "Ramp 2; gain 1 additional mana per turn.",
+    arcana: "water",
+    targeting: "untargeted",
+    ramp: 2,
+    effects: [{ kind: "gainManaPerTurn", amount: 1 }],
+  },
+  "spirit-energy": {
+    cardId: "spirit-energy",
+    title: "Spirit energy",
+    cost: 1,
+    body: "Increases elemental damage you deal by 1.",
+    arcana: "air",
+    targeting: "player",
+    effects: [{ kind: "gainElementalDamage", amount: 1, permanent: true }],
   },
   twinkletoes: {
     cardId: "twinkletoes",
@@ -216,6 +250,9 @@ export const DEBUG_DECK: string[] = [
   "tremors",
   "zap",
   "humble-guide",
+  "endurance",
+  "temporal-energy",
+  "spirit-energy",
 ];
 
 // Build unique card instances from a list of card ids, so a deck may hold
