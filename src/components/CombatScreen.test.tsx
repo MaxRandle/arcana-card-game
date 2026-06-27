@@ -1,0 +1,294 @@
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { CombatScreen } from "./CombatScreen";
+import { Unit, createCombat } from "@/utils/combat";
+import { toInstances } from "@/utils/cards";
+
+const noShuffle = () => 0.999999;
+
+function arcanist(overrides: Partial<Unit> = {}): Unit {
+  return {
+    id: "arcanist",
+    name: "Arcanist",
+    side: "player",
+    hp: 100,
+    maxHp: 100,
+    atk: 1,
+    blk: 0,
+    statuses: {},
+    ...overrides,
+  };
+}
+
+function enemy(overrides: Partial<Unit> = {}): Unit {
+  return {
+    id: "knight",
+    name: "Knight",
+    side: "enemy",
+    hp: 60,
+    maxHp: 60,
+    atk: 1,
+    blk: 2,
+    statuses: {},
+    ...overrides,
+  };
+}
+
+describe("CombatScreen", () => {
+  it("shows live hp/atk/blk for the arcanist and the enemy", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist(), [enemy()])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText("Arcanist stats")).toHaveTextContent("100/100");
+    expect(
+      within(screen.getByLabelText("Knight stats")).getByLabelText("Block 2"),
+    ).toBeInTheDocument();
+  });
+
+  it("applies attacks when End turn is pressed", async () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist({ atk: 5 }), [enemy({ blk: 0 })])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("55/60");
+  });
+
+  it("calls onWin when the last enemy dies", async () => {
+    const onWin = jest.fn();
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist({ atk: 100 }), [enemy({ hp: 5 })])}
+        deck={[]}
+        onWin={onWin}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
+    expect(onWin).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onLoss when the arcanist dies", async () => {
+    const onLoss = jest.fn();
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist({ hp: 3 }), [enemy({ atk: 50 })])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={onLoss}
+        onRetire={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /end turn/i }));
+    expect(onLoss).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows current mana", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("3");
+  });
+
+  it("renders the drawn hand with card details", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const hand = screen.getByLabelText("Hand");
+    expect(hand).toHaveTextContent("Windshear");
+    expect(hand).toHaveTextContent("Deal 3 damage.");
+  });
+
+  it("plays a damage card dragged onto an enemy, spending mana", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy({ hp: 10, blk: 0 })],
+          toInstances(["windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play windshear/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Knight target"));
+
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("7/60");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
+  });
+
+  it("plays an untargeted card dragged onto the battlefield (no unit)", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          // mental-energy is untargeted: "Draw 2 cards".
+          toInstances(["mental-energy", "windshear", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play mental energy/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Battlefield"));
+
+    // The card resolved (drew 2 more) and spent its mana (3 - 1).
+    expect(screen.getByLabelText("Hand")).not.toHaveTextContent("Mental energy");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("2");
+  });
+
+  it("plays a player-targeted card dragged onto the battlefield (single arcanist)", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist({ blk: 0 }),
+          [enemy()],
+          // endurance is player-targeted: "Ramp 1; gain 1 block". With one
+          // player character it is played like an untargeted card.
+          toInstances(["endurance", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play endurance/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Battlefield"));
+
+    // The card resolved on the arcanist (gained block) and spent its mana.
+    expect(
+      within(screen.getByLabelText("Arcanist stats")).getByLabelText("Block 1"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Hand")).not.toHaveTextContent("Endurance");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("1");
+  });
+
+  it("does not play an untargeted card released back onto the hand", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(
+          arcanist(),
+          [enemy()],
+          toInstances(["mental-energy", "windshear", "windshear", "windshear"]),
+          noShuffle,
+        )}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play mental energy/i);
+    fireEvent.pointerDown(cardEl);
+    // Released over the hand region, not the battlefield — so it is not played.
+    fireEvent.pointerUp(screen.getByLabelText("Hand"));
+
+    expect(screen.getByLabelText("Hand")).toHaveTextContent("Mental energy");
+    expect(screen.getByLabelText(/mana/i)).toHaveTextContent("3");
+  });
+
+  it("does not play a card the player cannot afford", () => {
+    render(
+      <CombatScreen
+        // 0 mana: 0 start + 0 gain via a stubbed initial state below
+        initialState={{
+          ...createCombat(
+            arcanist(),
+            [enemy({ hp: 10, blk: 0 })],
+            toInstances(["windshear"]),
+            noShuffle,
+          ),
+          mana: 0,
+        }}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    const cardEl = screen.getByLabelText(/play windshear/i);
+    fireEvent.pointerDown(cardEl);
+    fireEvent.pointerUp(screen.getByLabelText("Knight target"));
+
+    // Unchanged: enemy unhurt and card still in hand.
+    expect(screen.getByLabelText("Knight stats")).toHaveTextContent("10/60");
+    expect(screen.getByLabelText("Hand")).toHaveTextContent("Windshear");
+  });
+
+  it("retires the run from the menu", async () => {
+    const onRetire = jest.fn();
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist(), [enemy()])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={onRetire}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /menu/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /retire/i }));
+    expect(onRetire).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the deck overlay from the View deck button", async () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist(), [enemy()])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /view deck/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});

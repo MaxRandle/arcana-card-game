@@ -26,14 +26,14 @@ the majority of non-status cards across all five arcana become playable.
 
 ## Acceptance criteria
 
-- [ ] Semicolon clauses resolve left-to-right, each fully before the next
-- [ ] A clause targeting an already-dead unit fizzles silently without aborting the card
-- [ ] Card moves to discard only after all clauses resolve (cannot self-redraw)
-- [ ] All four targeting modes work, including untargeted drag-to-battlefield (no arrow)
-- [ ] "Any unit" cards branch on the targeted side
-- [ ] Damage applies block; "lose hp" ignores block; heal/gain-block/gain-atk/gain-mana/draw all resolve correctly
-- [ ] Equilibrium draws one card per distinct arcana in the deck (Generic excluded)
-- [ ] Effect primitives and the resolver are tested modules with full unit coverage
+- [x] Semicolon clauses resolve left-to-right, each fully before the next
+- [x] A clause targeting an already-dead unit fizzles silently without aborting the card
+- [x] Card moves to discard only after all clauses resolve (cannot self-redraw)
+- [x] All four targeting modes work, including untargeted drag-to-battlefield (no arrow)
+- [x] "Any unit" cards branch on the targeted side
+- [x] Damage applies block; "lose hp" ignores block; heal/gain-block/gain-atk/gain-mana/draw all resolve correctly
+- [x] Equilibrium draws one card per distinct arcana in the deck (Generic excluded)
+- [x] Effect primitives and the resolver are tested modules with full unit coverage
 
 ## Blocked by
 

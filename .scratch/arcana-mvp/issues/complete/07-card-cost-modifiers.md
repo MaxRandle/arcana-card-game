@@ -1,6 +1,6 @@
 # Card cost modifiers: Ramp, per-turn mana, Permanent & elemental-damage bonus
 
-Status: ready-for-agent
+Status: done
 
 ## What to build
 
@@ -24,13 +24,13 @@ Permanent; ensure the reset hooks into the same combat-end path as stats/statuse
 
 ## Acceptance criteria
 
-- [ ] Ramp increases a card's cost by x on each play, floored at 0, per-copy independent, reset at combat end
-- [ ] Displayed mana cost reflects current ramped cost
-- [ ] "Gain N additional mana per turn" stacks into the Mana phase for the rest of combat
-- [ ] Spirit energy adds +1 to elemental damage dealt
-- [ ] Permanent effects survive combat-end reset and persist for the run via the checkpoint
-- [ ] Non-permanent cost/mana/damage modifiers reset between encounters
-- [ ] Cost-modifier and ongoing-modifier logic are tested modules with full unit coverage
+- [x] Ramp increases a card's cost by x on each play, floored at 0, per-copy independent, reset at combat end
+- [x] Displayed mana cost reflects current ramped cost
+- [x] "Gain N additional mana per turn" stacks into the Mana phase for the rest of combat
+- [x] Spirit energy adds +1 to elemental damage dealt
+- [x] Permanent effects survive combat-end reset and persist for the run via the checkpoint
+- [x] Non-permanent cost/mana/damage modifiers reset between encounters
+- [x] Cost-modifier and ongoing-modifier logic are tested modules with full unit coverage
 
 ## Blocked by
 
