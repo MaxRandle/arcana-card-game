@@ -21,9 +21,10 @@ import knightSprite from "@/assets/sprites/knight.png";
 interface CombatScreenProps {
   initialState: CombatState;
   deck: string[];
-  /** Receives the run's Permanent elemental-damage total at the win, so the
-   *  caller can persist it to the checkpoint. */
-  onWin: (permanentElementalDamage: number) => void;
+  /** Receives the arcanist's surviving HP and the run's Permanent
+   *  elemental-damage total at the win, so the caller can persist them to the
+   *  checkpoint. */
+  onWin: (result: { hp: number; permanentElementalDamage: number }) => void;
   onLoss: () => void;
   /** Wipes the run and returns to Home (the menu's Retire action). */
   onRetire: () => void;
@@ -53,9 +54,14 @@ export function CombatScreen({
   const [origin, setOrigin] = useState<Pointer | null>(null);
 
   useEffect(() => {
-    if (state.outcome === "win") onWin(state.modifiers.permanentElementalDamage);
-    else if (state.outcome === "loss") onLoss();
-  }, [state.outcome, state.modifiers.permanentElementalDamage, onWin, onLoss]);
+    if (state.outcome === "win") {
+      const arcanist = state.units.find((u) => u.side === "player");
+      onWin({
+        hp: arcanist?.hp ?? 0,
+        permanentElementalDamage: state.modifiers.permanentElementalDamage,
+      });
+    } else if (state.outcome === "loss") onLoss();
+  }, [state.outcome, state.units, state.modifiers.permanentElementalDamage, onWin, onLoss]);
 
   // While a card is held, track the cursor (for the arrow / floating card) and
   // cancel the drag if the player releases anywhere but a valid target.

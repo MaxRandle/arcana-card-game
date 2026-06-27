@@ -1,26 +1,23 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CombatScreen } from "@/components/CombatScreen";
+import { OpeningDraftView } from "@/components/OpeningDraftView";
 import { usePersistedRun } from "@/components/use-persisted-run";
 import { clearRun, saveRun } from "@/utils/run-storage";
-import { Unit, createCombat } from "@/utils/combat";
-import { makeFastKnight, makeBarbarian } from "@/utils/enemies";
-import { DEBUG_DECK, toInstances } from "@/utils/cards";
+import { CombatState, Unit, beginCombat } from "@/utils/combat";
+import { DeckState } from "@/utils/deck";
+import { makeEncounter } from "@/utils/encounters";
+import { resolveEncounterWin, resolveEncounterLoss } from "@/utils/progression";
 
-// Temporary "start combat" entry point. The real encounter/level flow (which
-// enemy, with what stats) and real drafting arrive in slice 08; for now this
-// drops the arcanist into a multi-enemy demo fight against the level-1 roster,
-// seeded with the debug deck, so the full combat loop is demoable end-to-end.
-
-function makeArcanist(): Unit {
+function makeArcanist(hp: number, maxHp: number): Unit {
   return {
     id: "arcanist",
     name: "Arcanist",
     side: "player",
-    hp: 100,
-    maxHp: 100,
+    hp,
+    maxHp,
     atk: 1,
     blk: 0,
     statuses: {},
@@ -30,41 +27,55 @@ function makeArcanist(): Unit {
 export default function CombatPage() {
   const router = useRouter();
   const run = usePersistedRun();
+  // The combat begins only once the opening draft sets the opening hand; until
+  // then we show the draft. A mid-combat refresh discards this and restarts the
+  // encounter from the checkpoint (ADR-0001).
+  const [combat, setCombat] = useState<CombatState | null>(null);
 
-  // Seed the fight with the run's Permanent elemental-damage total so bonuses
-  // earned in earlier encounters still apply.
-  const permanentElementalDamage = run?.permanentElementalDamage ?? 0;
-  const initialState = useMemo(
-    () =>
-      createCombat(
-        makeArcanist(),
-        [makeFastKnight("fast-knight"), makeBarbarian("barbarian")],
-        toInstances(DEBUG_DECK),
-        Math.random,
-        permanentElementalDamage,
-      ),
-    [permanentElementalDamage],
+  // The enemy line-up for the run's real position.
+  const enemies = useMemo(
+    () => (run ? makeEncounter(run.level, run.encounter) : []),
+    [run],
   );
 
-  // No run means nothing to fight in — head home.
+  // No run, or the run isn't sitting on an encounter — head back to adventure.
   useEffect(() => {
     if (run === null) router.replace("/");
+    else if (run && run.activity.kind !== "encounter") router.replace("/adventure");
   }, [run, router]);
 
-  if (!run) return null;
+  if (!run || run.activity.kind !== "encounter") return null;
+
+  if (combat === null) {
+    return (
+      <OpeningDraftView
+        deck={run.deck}
+        onConfirm={(deck: DeckState) =>
+          setCombat(
+            beginCombat(
+              makeArcanist(run.hp, run.maxHp),
+              enemies,
+              deck,
+              Math.random,
+              run.permanentElementalDamage,
+            ),
+          )
+        }
+      />
+    );
+  }
 
   return (
     <CombatScreen
-      initialState={initialState}
+      initialState={combat}
       deck={run.deck}
-      onWin={(permanentElementalDamage) => {
-        // Persist any Permanent bonuses earned this fight to the checkpoint.
-        saveRun({ ...run, permanentElementalDamage });
+      onWin={(result) => {
+        saveRun(resolveEncounterWin(run, result));
         router.replace("/adventure");
       }}
       onLoss={() => {
-        clearRun();
-        router.replace("/");
+        saveRun(resolveEncounterLoss(run));
+        router.replace("/adventure");
       }}
       onRetire={() => {
         clearRun();

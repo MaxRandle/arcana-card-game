@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { usePersistedRun } from "./use-persisted-run";
-import { createRun } from "@/utils/run-state";
+import { createRun } from "@/utils/progression";
 import { saveRun, clearRun } from "@/utils/run-storage";
 
 beforeEach(() => {

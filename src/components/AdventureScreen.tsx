@@ -1,25 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { Arcana } from "@/utils/cards";
 import { RunState, ctaLabel } from "@/utils/run-state";
 import { DeckView } from "./DeckView";
+import { DraftView } from "./DraftView";
 
 interface AdventureScreenProps {
   run: RunState;
   onRetire: () => void;
   onStartCombat: () => void;
+  onPickArcana: (arcana: Arcana) => void;
+  onPickCard: (cardId: string) => void;
+  /** Ends the run (return Home) from a won/lost screen. */
+  onFinish: () => void;
 }
 
 export function AdventureScreen({
   run,
   onRetire,
   onStartCombat,
+  onPickArcana,
+  onPickCard,
+  onFinish,
 }: AdventureScreenProps) {
   const [deckOpen, setDeckOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <main className="relative flex min-h-full flex-1 flex-col items-center justify-end p-6">
+    <main className="relative flex min-h-full flex-1 flex-col items-center justify-center p-6">
       {/* Top-left hamburger menu */}
       <div className="absolute left-4 top-4">
         <button
@@ -61,18 +70,72 @@ export function AdventureScreen({
         🂠
       </button>
 
-      {/* Main CTA */}
-      <button
-        type="button"
-        onClick={onStartCombat}
-        className="mb-12 rounded-full bg-amber-600 px-10 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500"
-      >
-        {ctaLabel(run)}
-      </button>
+      <Activity
+        run={run}
+        onStartCombat={onStartCombat}
+        onPickArcana={onPickArcana}
+        onPickCard={onPickCard}
+        onFinish={onFinish}
+      />
 
       {deckOpen && (
         <DeckView cards={run.deck} onClose={() => setDeckOpen(false)} />
       )}
     </main>
+  );
+}
+
+function Activity({
+  run,
+  onStartCombat,
+  onPickArcana,
+  onPickCard,
+  onFinish,
+}: {
+  run: RunState;
+  onStartCombat: () => void;
+  onPickArcana: (arcana: Arcana) => void;
+  onPickCard: (cardId: string) => void;
+  onFinish: () => void;
+}) {
+  const { activity } = run;
+
+  if (activity.kind === "arcana-draft" || activity.kind === "card-draft") {
+    return (
+      <DraftView
+        activity={activity}
+        onPickArcana={onPickArcana}
+        onPickCard={onPickCard}
+      />
+    );
+  }
+
+  if (activity.kind === "won" || activity.kind === "lost") {
+    const won = activity.kind === "won";
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h2 className="text-3xl font-semibold text-white">
+          {won ? "Run complete!" : "You have fallen"}
+        </h2>
+        <button
+          type="button"
+          onClick={onFinish}
+          className="rounded-full bg-amber-600 px-10 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500"
+        >
+          Return home
+        </button>
+      </div>
+    );
+  }
+
+  // activity.kind === "encounter"
+  return (
+    <button
+      type="button"
+      onClick={onStartCombat}
+      className="rounded-full bg-amber-600 px-10 py-4 text-lg font-semibold text-white shadow-lg hover:bg-amber-500"
+    >
+      {ctaLabel(run)}
+    </button>
   );
 }

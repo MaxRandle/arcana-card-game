@@ -230,9 +230,9 @@ export function cardOf(cardId: string): Card {
   return card;
 }
 
-// A fixed deck seeded into combat so the card-play loop is demoable in
-// isolation. Stays in permanently as a dev-only testing harness; real drafting
-// arrives in slice 08. Spans every arcana so Equilibrium has work to do.
+// A fixed deck spanning every arcana (so Equilibrium has work to do), kept as a
+// dev-only harness for testing combat in isolation. The real run flow builds the
+// deck through drafting (see ./progression); this is no longer the live entry.
 export const DEBUG_DECK: string[] = [
   "windshear",
   "rock",

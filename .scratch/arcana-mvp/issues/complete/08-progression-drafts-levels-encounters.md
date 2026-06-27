@@ -1,6 +1,6 @@
 # Deck-building progression: drafts, levels, encounters & rewards
 
-Status: ready-for-agent
+Status: done
 
 ## What to build
 

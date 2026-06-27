@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdventureScreen } from "@/components/AdventureScreen";
 import { usePersistedRun } from "@/components/use-persisted-run";
-import { clearRun } from "@/utils/run-storage";
+import { clearRun, saveRun } from "@/utils/run-storage";
+import { pickArcana, pickCard } from "@/utils/progression";
+import { Arcana } from "@/utils/cards";
 
 export default function AdventurePage() {
   const router = useRouter();
@@ -29,6 +31,9 @@ export default function AdventurePage() {
       run={run}
       onRetire={retire}
       onStartCombat={() => router.push("/combat")}
+      onPickArcana={(arcana: Arcana) => saveRun(pickArcana(run, arcana))}
+      onPickCard={(cardId: string) => saveRun(pickCard(run, cardId))}
+      onFinish={retire}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { createRun } from "./run-state";
+import { createRun } from "./progression";
 import { loadRun, saveRun, clearRun, RUN_STORAGE_KEY } from "./run-storage";
 
 beforeEach(() => {

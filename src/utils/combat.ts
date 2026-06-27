@@ -52,12 +52,31 @@ export function createCombat(
   // bonuses earned in earlier encounters still apply.
   permanentElementalDamage = 0,
 ): CombatState {
+  return beginCombat(
+    arcanist,
+    enemies,
+    createDeckState(deckCards, rng),
+    rng,
+    permanentElementalDamage,
+  );
+}
+
+// Begin combat from an already-partitioned DeckState — used by the opening
+// draft, which decides the opening hand before combat starts (the rest of the
+// deck is the supplied draw pile).
+export function beginCombat(
+  arcanist: Unit,
+  enemies: Unit[],
+  deck: DeckState,
+  rng: Rng = Math.random,
+  permanentElementalDamage = 0,
+): CombatState {
   const base: CombatState = {
     units: [arcanist, ...enemies],
     turn: "player",
     outcome: "ongoing",
     mana: MANA_START,
-    deck: createDeckState(deckCards, rng),
+    deck,
     modifiers: createModifiers(permanentElementalDamage),
   };
   // Turn 1 has no statuses to tick (they reset to empty between encounters), so

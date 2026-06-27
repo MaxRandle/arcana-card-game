@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { HomeScreen } from "@/components/HomeScreen";
-import { createRun } from "@/utils/run-state";
+import { createRun } from "@/utils/progression";
 import { saveRun } from "@/utils/run-storage";
 
 export default function HomePage() {

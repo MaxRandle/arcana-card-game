@@ -1,14 +1,34 @@
 // Serializable run state — the between-encounter checkpoint everything else
 // hangs off (see ADR-0001). Keep this shape small and stable: it is the
-// contract the later progression slice writes to. No UI concerns here.
+// contract the progression logic (./progression) writes to. No UI concerns and
+// no transition logic here — only the type, the current activity, and
+// (de)serialization.
 
-export const RUN_STATE_VERSION = 2;
+import { Arcana } from "./cards";
+
+export const RUN_STATE_VERSION = 3;
 export const STARTING_HP = 100;
 
-export type RunPhase = "between-encounters" | "between-levels";
+// What the player must do next. Drafts carry their rolled offer so a refresh
+// reproduces the same choices (ADR-0001). A card-draft's `pool` is the arcana it
+// draws from, `remaining` how many picks are left in the batch, and `next` what
+// happens when the batch empties: start the level's encounters, or advance past
+// the just-cleared encounter (a post-encounter reward draft).
+export type RunActivity =
+  | { kind: "arcana-draft"; offer: Arcana[] }
+  | {
+      kind: "card-draft";
+      offer: string[];
+      pool: Arcana[];
+      remaining: number;
+      next: "encounter" | "advance";
+    }
+  | { kind: "encounter" }
+  | { kind: "won" }
+  | { kind: "lost" };
 
 export interface RunState {
-  /** Owned card ids — the run's deck. Empty until cards are acquired. */
+  /** Owned card ids — the run's deck. */
   deck: string[];
   /** Current HP, carried across encounters. */
   hp: number;
@@ -18,29 +38,21 @@ export interface RunState {
   level: number;
   /** 1-based encounter within the current level. */
   encounter: number;
-  /** Where the player sits between fights. */
-  phase: RunPhase;
+  /** Arcana whose pools the player has unlocked, in pick order. */
+  unlockedArcana: Arcana[];
   /**
    * Running total of Permanent elemental-damage bonuses earned this run. Seeded
    * back into each combat so Permanent effects persist across encounters.
    */
   permanentElementalDamage: number;
+  /** What the player does next between fights. */
+  activity: RunActivity;
 }
 
-export function createRun(): RunState {
-  return {
-    deck: [],
-    hp: STARTING_HP,
-    maxHp: STARTING_HP,
-    level: 1,
-    encounter: 1,
-    phase: "between-encounters",
-    permanentElementalDamage: 0,
-  };
-}
-
+// The Adventure CTA label, read from real position: a fresh level's first
+// encounter reads "Next level", every other encounter "Next encounter".
 export function ctaLabel(run: RunState): string {
-  return run.phase === "between-levels" ? "Next level" : "Next encounter";
+  return run.encounter === 1 && run.level > 1 ? "Next level" : "Next encounter";
 }
 
 export function serializeRun(run: RunState): string {
@@ -55,16 +67,25 @@ export function deserializeRun(raw: string): RunState | null {
     return null;
   }
   if (!isVersionedRun(parsed)) return null;
-  const { deck, hp, maxHp, level, encounter, phase, permanentElementalDamage } =
-    parsed;
+  const {
+    deck,
+    hp,
+    maxHp,
+    level,
+    encounter,
+    unlockedArcana,
+    permanentElementalDamage,
+    activity,
+  } = parsed;
   return {
     deck,
     hp,
     maxHp,
     level,
     encounter,
-    phase,
+    unlockedArcana,
     permanentElementalDamage,
+    activity,
   };
 }
 
@@ -81,7 +102,31 @@ function isVersionedRun(value: unknown): value is VersionedRun {
     typeof v.maxHp === "number" &&
     typeof v.level === "number" &&
     typeof v.encounter === "number" &&
-    (v.phase === "between-encounters" || v.phase === "between-levels") &&
-    typeof v.permanentElementalDamage === "number"
+    Array.isArray(v.unlockedArcana) &&
+    v.unlockedArcana.every((a) => typeof a === "string") &&
+    typeof v.permanentElementalDamage === "number" &&
+    isActivity(v.activity)
   );
+}
+
+function isActivity(value: unknown): value is RunActivity {
+  if (typeof value !== "object" || value === null) return false;
+  const a = value as Record<string, unknown>;
+  switch (a.kind) {
+    case "arcana-draft":
+      return Array.isArray(a.offer);
+    case "card-draft":
+      return (
+        Array.isArray(a.offer) &&
+        Array.isArray(a.pool) &&
+        typeof a.remaining === "number" &&
+        (a.next === "encounter" || a.next === "advance")
+      );
+    case "encounter":
+    case "won":
+    case "lost":
+      return true;
+    default:
+      return false;
+  }
 }
