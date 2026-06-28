@@ -51,6 +51,24 @@ describe("CombatScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("floats each unit's name above its sprite", () => {
+    render(
+      <CombatScreen
+        initialState={createCombat(arcanist(), [enemy()])}
+        deck={[]}
+        onWin={() => {}}
+        onLoss={() => {}}
+        onRetire={() => {}}
+      />,
+    );
+    expect(
+      within(screen.getByLabelText("Arcanist target")).getByText("Arcanist"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("Knight target")).getByText("Knight"),
+    ).toBeInTheDocument();
+  });
+
   it("applies attacks when End turn is pressed", async () => {
     render(
       <CombatScreen

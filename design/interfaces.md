@@ -45,6 +45,14 @@ Cards are displayed in a grid, 5 cards along the top, and wrapping to take up as
 
 Cards in the hand are fanned out in a shallow bow with the cards in the centre positioned slightly higher than the ones on the edges, and slightly overlapping like how a person would hold multiple cards. This is very similar to the layout of existing games such as "Hearthstone" and "Slay the Spire 2".
 
+## Units
+
+Units appear as 3 components:
+
+- A unit sprite
+- A unit name that floats above the unit sprite
+- A unit state view assembly
+
 ## Unit state view
 
 This displays under the unit sprite and tracks:

@@ -311,6 +311,9 @@ function UnitView({
       }}
       className="relative flex flex-col items-center"
     >
+      <span className="mb-1 text-lg font-semibold tracking-wide text-white drop-shadow-md">
+        {unit.name}
+      </span>
       <Image
         src={sprite}
         alt={unit.name}
