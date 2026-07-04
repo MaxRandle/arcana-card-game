@@ -4,7 +4,9 @@ description: Reach alignment on the design spec by relentlessly interviewing the
 disable-model-invocation: true
 ---
 
-Interview the user relentlessly about every aspect of this plan until you both reach a shared understanding. Walk down each branch of the design tree, dispelling ambiguity and resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+Inspect the git diff for the `design` folder to see the user's updates to the design spec.
+
+Interview the user relentlessly about every aspect of these design updates until you both reach a shared understanding. Walk down each branch of the design tree, dispelling ambiguity and resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
 
 ## Interview style
 

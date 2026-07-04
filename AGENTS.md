@@ -15,7 +15,7 @@ In SDD, the spec is the source of truth and the code is treated as a generated b
 
 The workflow outline is as follows:
 
-1. The `.md` spec files laid out in `design`. The user will update these with new or changing requirements
+1. The `.md` spec files are laid out in `design`. The user will update these with new or changing requirements.
 2. The user will commence an alignment session for the spec updates with the `/alignment` skill.
 3. The user will integrate the results of the alignment session back into the spec.
 4. The user will invoke the `/to-issues` skill to produce actionable issues.
